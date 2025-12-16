@@ -35,6 +35,9 @@ const App: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   // 转分动画状态：playerId -> amount
   const [transferAnimations, setTransferAnimations] = useState<Map<string, number>>(new Map());
+  // 微信浏览器检测
+  const [isWeChatBrowser, setIsWeChatBrowser] = useState(false);
+  const [showWeChatTip, setShowWeChatTip] = useState(false);
 
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const isManualJoinRef = useRef<boolean>(false);
@@ -46,6 +49,17 @@ const App: React.FC = () => {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  // 检测微信浏览器
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase();
+    const isWeChat = /micromessenger/i.test(ua);
+    setIsWeChatBrowser(isWeChat);
+    if (isWeChat) {
+      // 在微信浏览器中，显示提示
+      setShowWeChatTip(true);
+    }
+  }, []);
 
   // 根据视图动态更新 iOS Safari 状态栏颜色（theme-color）
   useEffect(() => {
@@ -793,9 +807,9 @@ const App: React.FC = () => {
 
         {/* 底部署名 - 适配 iOS Safari 底部地址栏 */}
         <div className="absolute left-0 right-0 text-center" style={{ 
-          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' 
+          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px) + 50px)' 
         }}>
-          <p className="text-sm" style={{ color: '#5B6E80' }}>Keen 2025</p>
+          <p className="text-sm" style={{ color: '#5B6E80' }}>© 2025 Keen</p>
         </div>
 
         {/* Toast - 在所有视图中都显示 */}
@@ -965,7 +979,7 @@ const App: React.FC = () => {
         <div 
           className="fixed right-6 flex flex-col gap-3 z-50"
           style={{
-            bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+            bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px) + 50px)',
             right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
           }}
         >
@@ -993,6 +1007,13 @@ const App: React.FC = () => {
             />
           </button>
         </div>
+
+        {/* 底部署名 - 适配 iOS Safari 底部地址栏 */}
+        <div className="fixed left-0 right-0 text-center z-40" style={{ 
+          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px) + 50px)' 
+        }}>
+          <p className="text-sm" style={{ color: '#5B6E80' }}>© 2025 Keen</p>
+        </div>
       </div>
     );
   }
@@ -1011,7 +1032,10 @@ const App: React.FC = () => {
           <p className="mt-1 font-mono" style={{ color: '#5B6E80' }}>{t.room}: {room.code}</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-8" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1 overflow-y-auto px-4 pb-8" style={{ 
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px) + 50px)'
+        }}>
           <div className="space-y-3 max-w-md mx-auto">
             {sortedPlayers.map((p, index) => (
               <div 
@@ -1062,12 +1086,97 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {/* 底部署名 - 适配 iOS Safari 底部地址栏 */}
+        <div className="fixed left-0 right-0 text-center z-40" style={{ 
+          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px) + 50px)' 
+        }}>
+          <p className="text-sm" style={{ color: '#5B6E80' }}>© 2025 Keen</p>
+        </div>
+
         {/* Toast */}
         {toastMessage && (
           <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-900/90 text-white px-6 py-3 rounded-full shadow-xl pointer-events-none transition-all z-50 animate-bounce-short">
             {toastMessage}
           </div>
         )}
+      </div>
+    );
+  }
+
+  // 微信浏览器提示遮罩
+  if (showWeChatTip && isWeChatBrowser) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6" style={{ backgroundColor: '#EEF4FA' }}>
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full border" style={{ borderColor: '#DCE8F5' }}>
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-bold text-slate-800 mb-2">
+              {lang === Lang.CN ? '请在浏览器中打开' : 'Please Open in Browser'}
+            </h2>
+            <p className="text-sm" style={{ color: '#5B6E80' }}>
+              {lang === Lang.CN 
+                ? '为了获得更好的体验，请在系统浏览器中打开此页面' 
+                : 'For better experience, please open this page in your system browser'}
+            </p>
+          </div>
+          
+          <div className="space-y-3 mb-6">
+            <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#EEF4FA' }}>
+              <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm" style={{ backgroundColor: '#2F5D8C', color: 'white' }}>
+                1
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-800">
+                  {lang === Lang.CN ? '点击右上角菜单' : 'Tap the menu in the top right'}
+                </p>
+                <p className="text-xs mt-1" style={{ color: '#5B6E80' }}>
+                  {lang === Lang.CN ? '（三个点或更多）' : '(Three dots or more)'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: '#EEF4FA' }}>
+              <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm" style={{ backgroundColor: '#2F5D8C', color: 'white' }}>
+                2
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-800">
+                  {lang === Lang.CN ? '选择"在浏览器中打开"' : 'Select "Open in Browser"'}
+                </p>
+                <p className="text-xs mt-1" style={{ color: '#5B6E80' }}>
+                  {lang === Lang.CN ? '或"用Safari打开"' : 'or "Open in Safari"'}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <Button
+              fullWidth
+              variant="outline"
+              onClick={() => setShowWeChatTip(false)}
+            >
+              {lang === Lang.CN ? '稍后提醒' : 'Remind Later'}
+            </Button>
+            <Button
+              fullWidth
+              variant="primary"
+              onClick={() => {
+                // 尝试复制链接到剪贴板
+                const url = window.location.href;
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(url).then(() => {
+                    setShowWeChatTip(false);
+                    showToast(lang === Lang.CN ? '链接已复制，请在浏览器中打开' : 'Link copied, please open in browser');
+                  });
+                } else {
+                  setShowWeChatTip(false);
+                }
+              }}
+            >
+              {lang === Lang.CN ? '复制链接' : 'Copy Link'}
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
