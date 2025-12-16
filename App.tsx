@@ -47,6 +47,17 @@ const App: React.FC = () => {
     roomRef.current = room;
   }, [room]);
 
+  // 根据视图动态更新 iOS Safari 状态栏颜色（theme-color）
+  useEffect(() => {
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      // 房间页：状态栏为白色（与 header 一致）
+      // 首页和结算页：状态栏为浅蓝色（与背景一致）
+      const color = view === ViewState.ROOM ? '#FFFFFF' : '#EEF4FA';
+      themeColorMeta.setAttribute('content', color);
+    }
+  }, [view]);
+
   // 强制刷新房间数据的函数
   const forceRefreshRoomData = () => {
     const ws = wsClientRef.current;
