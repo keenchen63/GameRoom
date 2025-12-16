@@ -728,7 +728,7 @@ const App: React.FC = () => {
           <p className="text-slate-500 mt-1 font-mono">{t.room}: {room.code}</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="flex-1 overflow-y-auto px-4 pb-8" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="space-y-3 max-w-md mx-auto">
             {sortedPlayers.map((p, index) => (
               <div 
@@ -758,19 +758,19 @@ const App: React.FC = () => {
                 </div>
               </div>
             ))}
+            
+            {/* 返回首页按钮 - 作为列表的一部分 */}
+            <div className="pt-4">
+              <Button 
+                fullWidth 
+                variant="secondary" 
+                onClick={handleExit}
+              >
+                <ArrowLeft size={18} />
+                {t.backHome}
+              </Button>
+            </div>
           </div>
-        </div>
-
-        {/* Floating Action Button - 与结束房间按钮样式一致 */}
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-4 z-40">
-          <Button 
-            fullWidth 
-            variant="secondary" 
-            onClick={handleExit}
-          >
-            <ArrowLeft size={18} />
-            {t.backHome}
-          </Button>
         </div>
 
         {/* Toast */}
