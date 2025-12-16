@@ -65,14 +65,20 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({
           <h2 className="text-xl font-bold text-slate-800">
             {t.roomQrTitle}
           </h2>
-          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
+          <button 
+            onClick={onClose} 
+            className="p-2 rounded-full transition-colors"
+            style={{ backgroundColor: '#EEF4FA', color: '#5B6E80' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#DCE8F5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EEF4FA'}
+          >
             <X size={20} />
           </button>
         </div>
 
         {/* QR Code */}
         <div className="flex flex-col items-center justify-center py-6 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-inner border-2 border-slate-200">
+          <div className="bg-white p-4 rounded-xl shadow-inner border-2" style={{ borderColor: '#DCE8F5' }}>
             {qrCodeDataUrl ? (
               <img 
                 src={qrCodeDataUrl} 
@@ -80,15 +86,15 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({
                 className="w-64 h-64"
               />
             ) : (
-              <div className="w-64 h-64 flex items-center justify-center bg-slate-100 rounded">
-                <div className="text-slate-400 text-sm">生成中...</div>
+              <div className="w-64 h-64 flex items-center justify-center rounded" style={{ backgroundColor: '#EEF4FA' }}>
+                <div className="text-sm" style={{ color: '#5B6E80' }}>生成中...</div>
               </div>
             )}
           </div>
           
           <div className="text-center">
-             <p className="text-sm text-slate-500 mb-1">{t.scanToJoin}</p>
-             <p className="font-mono text-4xl font-extrabold text-indigo-600 tracking-wider">
+             <p className="text-sm mb-1" style={{ color: '#5B6E80' }}>{t.scanToJoin}</p>
+             <p className="font-mono text-4xl font-extrabold tracking-wider" style={{ color: '#2F5D8C' }}>
                {roomCode}
              </p>
           </div>

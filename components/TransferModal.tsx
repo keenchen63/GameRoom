@@ -37,35 +37,47 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto transition-opacity"
         onClick={onClose}
       />
 
-      {/* Content */}
-      <div className="bg-white w-full max-w-md p-6 rounded-t-3xl sm:rounded-2xl shadow-2xl z-10 pointer-events-auto transform transition-transform duration-300 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-5 fade-in">
+      {/* Content - 卡片式效果 */}
+      <div className="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl z-10 pointer-events-auto transform transition-all duration-300 animate-in fade-in zoom-in-95">
         
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-slate-800">
-            {t.transferScore} <span className="text-indigo-600">{lang === Lang.CN ? targetPlayer.animalProfile.name_cn : targetPlayer.animalProfile.name_en}</span>
+            {t.transferScore} <span style={{ color: '#2F5D8C' }}>{lang === Lang.CN ? targetPlayer.animalProfile.name_cn : targetPlayer.animalProfile.name_en}</span>
           </h2>
-          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
+          <button 
+            onClick={onClose} 
+            className="p-2 rounded-full transition-colors"
+            style={{ backgroundColor: '#EEF4FA', color: '#5B6E80' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#DCE8F5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EEF4FA'}
+          >
             <X size={20} />
           </button>
         </div>
 
         {/* Input Display */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-slate-500 mb-2">{t.amount}</label>
+          <label className="block text-sm font-medium mb-2" style={{ color: '#5B6E80' }}>{t.amount}</label>
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
-            className="w-full text-4xl font-mono font-bold text-center py-4 border-b-2 border-slate-200 focus:border-indigo-500 focus:outline-none bg-transparent"
+            className="w-full text-4xl font-mono font-bold text-center py-4 border-b-2 focus:outline-none bg-transparent"
+            style={{ 
+              borderBottomColor: '#2F5D8C',
+              '--tw-ring-color': '#2F5D8C',
+            } as React.CSSProperties & { '--tw-ring-color': string }}
+            onFocus={(e) => e.currentTarget.style.borderBottomColor = '#2F5D8C'}
+            onBlur={(e) => e.currentTarget.style.borderBottomColor = '#DCE8F5'}
           />
         </div>
 
@@ -75,7 +87,22 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             <button
               key={val}
               onClick={() => handleQuickAdd(val)}
-              className="py-3 rounded-lg bg-slate-50 font-bold text-slate-600 border border-slate-200 active:bg-indigo-50 active:border-indigo-200 active:text-indigo-600 transition-colors"
+              className="py-3 rounded-lg bg-slate-50 font-bold text-slate-600 border border-slate-200 transition-colors"
+              onMouseDown={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(47, 93, 140, 0.1)';
+                e.currentTarget.style.borderColor = '#2F5D8C';
+                e.currentTarget.style.color = '#2F5D8C';
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.backgroundColor = '#EEF4FA';
+                e.currentTarget.style.borderColor = '#DCE8F5';
+                e.currentTarget.style.color = '#5B6E80';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#EEF4FA';
+                e.currentTarget.style.borderColor = '#DCE8F5';
+                e.currentTarget.style.color = '#5B6E80';
+              }}
             >
               {val}
             </button>

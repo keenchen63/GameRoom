@@ -49,7 +49,7 @@ export const TEXT = {
     room: '房间',
     endGame: '结束房间',
     leaveRoom: '离开房间',
-    you: '这是你',
+    you: '我',
     transferScore: '转分给',
     confirm: '确认',
     cancel: '取消',

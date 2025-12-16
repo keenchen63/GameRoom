@@ -45,7 +45,13 @@ export const AvatarModal: React.FC<AvatarModalProps> = ({
           <h2 className="text-xl font-bold text-slate-800">
             {lang === Lang.CN ? '更换头像' : 'Change Avatar'}
           </h2>
-          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200">
+          <button 
+            onClick={onClose} 
+            className="p-2 rounded-full transition-colors"
+            style={{ backgroundColor: '#EEF4FA', color: '#5B6E80' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#DCE8F5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EEF4FA'}
+          >
             <X size={20} />
           </button>
         </div>
@@ -57,16 +63,27 @@ export const AvatarModal: React.FC<AvatarModalProps> = ({
               <button
                 key={animal.emoji}
                 onClick={() => setSelectedAvatar(animal)}
-                className={`
-                  flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all
-                  ${selectedAvatar.emoji === animal.emoji 
-                    ? 'border-indigo-500 bg-indigo-50' 
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all"
+                style={
+                  selectedAvatar.emoji === animal.emoji 
+                    ? { borderColor: '#2F5D8C', backgroundColor: 'rgba(47, 93, 140, 0.1)' }
+                    : { borderColor: '#DCE8F5' }
+                }
+                onMouseEnter={(e) => {
+                  if (selectedAvatar.emoji !== animal.emoji) {
+                    e.currentTarget.style.borderColor = '#2F5D8C';
+                    e.currentTarget.style.backgroundColor = '#EEF4FA';
                   }
-                `}
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedAvatar.emoji !== animal.emoji) {
+                    e.currentTarget.style.borderColor = '#DCE8F5';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
                 <div className="text-4xl">{animal.emoji}</div>
-                <span className="text-xs font-medium text-slate-600">
+                <span className="text-xs font-medium" style={{ color: '#5B6E80' }}>
                   {lang === Lang.CN ? animal.name_cn : animal.name_en}
                 </span>
               </button>

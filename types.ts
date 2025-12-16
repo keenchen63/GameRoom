@@ -29,9 +29,21 @@ export interface RoomData {
   isEnded?: boolean;
 }
 
+// 转分操作记录
+export interface TransferRecord {
+  fromPlayerId: string;
+  fromPlayerName: string;
+  fromPlayerEmoji: string;
+  toPlayerId: string;
+  toPlayerName: string;
+  toPlayerEmoji: string;
+  amount: number;
+  timestamp: number;
+}
+
 // WebSocket 消息类型
 export interface WSMessage {
-  type: 'CREATE_ROOM' | 'JOIN_ROOM' | 'TRANSFER' | 'END_GAME' | 'PING' | 'CHANGE_AVATAR' | 'LEAVE_ROOM';
+  type: 'CREATE_ROOM' | 'JOIN_ROOM' | 'TRANSFER' | 'END_GAME' | 'PING' | 'CHANGE_AVATAR' | 'LEAVE_ROOM' | 'GET_TRANSFER_HISTORY';
   playerId?: string;
   roomId?: string;
   targetPlayerId?: string;
@@ -40,6 +52,6 @@ export interface WSMessage {
 }
 
 export interface WSResponse {
-  type: 'ROOM_CREATED' | 'ROOM_JOINED' | 'ROOM_STATE' | 'ERROR' | 'PONG' | 'ROOM_LEFT';
+  type: 'ROOM_CREATED' | 'ROOM_JOINED' | 'ROOM_STATE' | 'ERROR' | 'PONG' | 'ROOM_LEFT' | 'TRANSFER_SUCCESS' | 'TRANSFER_HISTORY' | 'TRANSFER_ANIMATION';
   data?: any;
 }

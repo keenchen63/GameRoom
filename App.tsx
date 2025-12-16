@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { QrCode, LogOut, ArrowLeft, Trophy, Users, Languages, Gamepad2 } from 'lucide-react';
-import { Lang, ViewState, Player, RoomData } from './types';
+import { QrCode, LogOut, ArrowLeft, Trophy, Users, Languages, Gamepad2, RefreshCw, History } from 'lucide-react';
+import { Lang, ViewState, Player, RoomData, TransferRecord } from './types';
 import { ANIMALS, TEXT } from './constants';
 import { Button } from './components/Button';
 import { Avatar } from './components/Avatar';
@@ -8,6 +8,7 @@ import { TransferModal } from './components/TransferModal';
 import { QrCodeModal } from './components/QrCodeModal';
 import { AvatarModal } from './components/AvatarModal';
 import { ConfirmModal } from './components/ConfirmModal';
+import { TransferHistoryModal } from './components/TransferHistoryModal';
 import { WebSocketClient } from './utils/websocket';
 
 const App: React.FC = () => {
@@ -27,12 +28,18 @@ const App: React.FC = () => {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isEndGameConfirmOpen, setIsEndGameConfirmOpen] = useState(false);
   const [isLeaveRoomConfirmOpen, setIsLeaveRoomConfirmOpen] = useState(false);
+  const [isTransferHistoryModalOpen, setIsTransferHistoryModalOpen] = useState(false);
+  const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  // 转分动画状态：playerId -> amount
+  const [transferAnimations, setTransferAnimations] = useState<Map<string, number>>(new Map());
 
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const isManualJoinRef = useRef<boolean>(false);
   const roomRef = useRef<RoomData | null>(null);
+  const isRefreshingRef = useRef<boolean>(false);
   const t = TEXT[lang];
   
   // 同步 room 到 ref，以便在事件处理函数中访问最新值
@@ -90,6 +97,31 @@ const App: React.FC = () => {
     setLang(prev => prev === Lang.CN ? Lang.EN : Lang.CN);
   };
 
+  // 手动刷新数据
+  const handleManualRefresh = () => {
+    if (isRefreshingRef.current) return; // 防止重复点击
+    
+    isRefreshingRef.current = true;
+    setIsRefreshing(true);
+    const success = forceRefreshRoomData();
+    
+    if (!success) {
+      isRefreshingRef.current = false;
+      setIsRefreshing(false);
+      showToast(lang === Lang.CN ? '刷新失败，请稍后重试' : 'Refresh failed, please try again');
+      return;
+    }
+    
+    // 如果成功，等待服务器响应后，在 handleRoomState 中重置刷新状态
+    // 添加超时保护：3 秒后自动重置，防止服务器无响应
+    setTimeout(() => {
+      if (isRefreshingRef.current) {
+        isRefreshingRef.current = false;
+        setIsRefreshing(false);
+      }
+    }, 3000);
+  };
+
   // 将服务器返回的玩家数据转换为前端格式
   const transformServerPlayer = (serverPlayer: any, currentPlayerId: string): Player => {
     // 服务器返回的 avatar 就是完整的动物对象
@@ -106,6 +138,12 @@ const App: React.FC = () => {
   const handleRoomState = (data: any) => {
     if (!data || !data.players) {
       return;
+    }
+
+    // 如果正在手动刷新，收到响应后立即重置刷新状态
+    if (isRefreshingRef.current) {
+      isRefreshingRef.current = false;
+      setIsRefreshing(false);
     }
 
     // 使用最新的 selfId（从 state 或 localStorage）
@@ -140,6 +178,11 @@ const App: React.FC = () => {
       players: sortedPlayers,
       isEnded: data.isEnded || false,
     });
+
+    // 更新转分记录
+    if (data.transferHistory) {
+      setTransferHistory(data.transferHistory);
+    }
 
     // 如果房间已结束，进入结算页面
     if (data.isEnded) {
@@ -211,6 +254,38 @@ const App: React.FC = () => {
     ws.on('PONG', () => {
       // 心跳响应，连接正常
       // 不需要特殊处理，只是确认连接正常
+    });
+
+    ws.on('TRANSFER_SUCCESS', (data: any) => {
+      if (isMounted) {
+        // WebSocket 客户端已经传递了 response.data，所以这里直接使用 data
+        const { fromPlayerName, toPlayerName, toPlayerEmoji, amount } = data || {};
+        if (fromPlayerName && toPlayerName && amount !== undefined) {
+          // 使用当前的 lang state
+          const currentLang = lang;
+          const message = currentLang === Lang.CN 
+            ? `已向 ${toPlayerEmoji} ${toPlayerName} 转 ${amount} 分`
+            : `Transferred ${amount} points to ${toPlayerEmoji} ${toPlayerName}`;
+          showToast(message);
+        }
+      }
+    });
+
+    ws.on('TRANSFER_ANIMATION', (data: any) => {
+      if (isMounted) {
+        const { fromPlayerId, toPlayerId, amount } = data || {};
+        if (fromPlayerId && toPlayerId && amount !== undefined) {
+          // 更新动画状态
+          setTransferAnimations(prev => {
+            const newMap = new Map(prev);
+            // 转出玩家显示负数
+            newMap.set(fromPlayerId, -amount);
+            // 转入玩家显示正数
+            newMap.set(toPlayerId, amount);
+            return newMap;
+          });
+        }
+      }
     });
 
     ws.on('ERROR', (data) => {
@@ -652,9 +727,9 @@ const App: React.FC = () => {
   // 1. Home View
   if (view === ViewState.HOME) {
     return (
-      <div className="flex flex-col h-full bg-slate-50 p-6 relative">
+      <div className="flex flex-col h-full p-6 relative" style={{ backgroundColor: '#EEF4FA' }}>
         <div className="absolute top-6 right-6">
-          <button onClick={toggleLang} className="flex items-center gap-1 text-slate-500 font-medium bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-200">
+          <button onClick={toggleLang} className="flex items-center gap-1 font-medium bg-white px-3 py-1.5 rounded-full shadow-sm border" style={{ color: '#5B6E80', borderColor: '#DCE8F5' }}>
             <Languages size={16} />
             <span>{lang}</span>
           </button>
@@ -662,7 +737,7 @@ const App: React.FC = () => {
 
         <div className="flex-1 flex flex-col justify-center items-center gap-8 max-w-md mx-auto w-full">
           <div className="text-center mb-4">
-            <div className="w-24 h-24 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-200 rotate-3">
+            <div className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl rotate-3" style={{ backgroundColor: '#2F5D8C', boxShadow: '0 20px 25px -5px rgba(47, 93, 140, 0.1), 0 10px 10px -5px rgba(47, 93, 140, 0.04)' }}>
               <Gamepad2 size={48} className="text-white" />
             </div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -671,12 +746,13 @@ const App: React.FC = () => {
           </div>
 
           <div className="w-full space-y-4">
-             <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center">
+             <div className="bg-white p-2 rounded-2xl border shadow-sm flex items-center" style={{ borderColor: '#DCE8F5' }}>
                 <input 
                   type="tel" 
                   maxLength={4}
                   placeholder={t.roomCodePlaceholder}
-                  className="flex-1 px-4 py-3 text-lg outline-none bg-transparent placeholder:text-slate-400 text-center tracking-widest font-mono"
+                  className="flex-1 px-4 py-3 text-lg outline-none bg-transparent text-center tracking-widest font-mono"
+                  style={{ color: '#5B6E80' }}
                   value={inputCode}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, ''); // 只允许数字
@@ -691,10 +767,10 @@ const App: React.FC = () => {
 
              <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-300"></div>
+                  <div className="w-full border-t" style={{ borderColor: '#DCE8F5' }}></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-slate-50 text-slate-500">Or</span>
+                  <span className="px-2" style={{ backgroundColor: '#EEF4FA', color: '#5B6E80' }}>Or</span>
                 </div>
               </div>
 
@@ -717,23 +793,26 @@ const App: React.FC = () => {
   // 2. Room View
   if (view === ViewState.ROOM && room) {
     return (
-      <div className="flex flex-col h-screen h-[100dvh] bg-slate-50 overflow-hidden">
+      <div className="flex flex-col h-screen h-[100dvh] overflow-hidden" style={{ backgroundColor: '#EEF4FA' }}>
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10" style={{ top: 'env(safe-area-inset-top, 0)' }}>
+        <header className="bg-white border-b px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10" style={{ top: 'env(safe-area-inset-top, 0)', borderColor: '#DCE8F5' }}>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsQrModalOpen(true)}
-              className="bg-indigo-50 p-2 rounded-lg text-indigo-600 hover:bg-indigo-100 active:scale-95 transition-transform"
+              className="p-2 rounded-lg active:scale-95 transition-transform"
+              style={{ backgroundColor: 'rgba(47, 93, 140, 0.1)', color: '#2F5D8C' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(47, 93, 140, 0.15)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(47, 93, 140, 0.1)'}
             >
               <QrCode size={20} />
             </button>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{t.room}</p>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#5B6E80' }}>{t.room}</p>
               <p className="font-mono font-bold text-xl leading-none text-slate-800">{room.code}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={toggleLang} className="text-slate-400 font-bold text-sm">
+            <button onClick={toggleLang} className="font-bold text-sm" style={{ color: '#5B6E80' }}>
               {lang}
             </button>
             {(() => {
@@ -744,7 +823,10 @@ const App: React.FC = () => {
                 return (
                   <button
                     onClick={handleEndGameClick}
-                    className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 active:scale-95 transition-transform"
+                    className="p-2 rounded-lg active:scale-95 transition-transform"
+                    style={{ color: '#5B6E80' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#EEF4FA'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     title={t.endGame}
                   >
                     <LogOut size={20} />
@@ -754,7 +836,10 @@ const App: React.FC = () => {
                 return (
                   <button
                     onClick={handleLeaveRoomClick}
-                    className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 active:scale-95 transition-transform"
+                    className="p-2 rounded-lg active:scale-95 transition-transform"
+                    style={{ color: '#5B6E80' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#EEF4FA'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     title={t.leaveRoom}
                   >
                     <LogOut size={20} />
@@ -771,15 +856,26 @@ const App: React.FC = () => {
           WebkitOverflowScrolling: 'touch'
         }}>
           <div className="grid grid-cols-2 gap-4 pb-20">
-            {room.players.map((p) => (
-              <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <Avatar 
-                  player={p} 
-                  lang={lang} 
-                  onClick={() => handlePlayerClick(p)}
-                />
-              </div>
-            ))}
+            {room.players.map((p) => {
+              const transferAmount = transferAnimations.get(p.id) ?? null;
+              return (
+                <div key={p.id} className="bg-white rounded-2xl shadow-sm border overflow-hidden" style={{ borderColor: '#DCE8F5' }}>
+                  <Avatar 
+                    player={p} 
+                    lang={lang} 
+                    onClick={() => handlePlayerClick(p)}
+                    transferAmount={transferAmount}
+                    onTransferAnimationComplete={() => {
+                      setTransferAnimations(prev => {
+                        const newMap = new Map(prev);
+                        newMap.delete(p.id);
+                        return newMap;
+                      });
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -830,12 +926,52 @@ const App: React.FC = () => {
           lang={lang}
         />
 
+        <TransferHistoryModal
+          isOpen={isTransferHistoryModalOpen}
+          onClose={() => setIsTransferHistoryModalOpen(false)}
+          transferHistory={transferHistory}
+          lang={lang}
+        />
+
         {/* Toast */}
         {toastMessage && (
           <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-900/90 text-white px-6 py-3 rounded-full shadow-xl pointer-events-none transition-all z-50 animate-bounce-short">
             {toastMessage}
           </div>
         )}
+
+        {/* 操作按钮组 - 固定在右下角 */}
+        <div 
+          className="fixed right-6 flex flex-col gap-3 z-50"
+          style={{
+            bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+            right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+          }}
+        >
+          {/* 历史记录按钮 */}
+          <button
+            onClick={() => setIsTransferHistoryModalOpen(true)}
+            className="w-14 h-14 bg-white border-2 rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95"
+            style={{ borderColor: '#DCE8F5' }}
+            title={lang === Lang.CN ? '转分记录' : 'Transfer History'}
+          >
+            <History size={24} style={{ color: '#5B6E80' }} />
+          </button>
+          
+          {/* 刷新按钮 */}
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="w-14 h-14 bg-white border-2 border-slate-200 rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+            title={lang === Lang.CN ? '刷新数据' : 'Refresh Data'}
+          >
+            <RefreshCw 
+              size={24} 
+              className={`${isRefreshing ? 'animate-spin' : ''}`}
+              style={{ color: '#2F5D8C' }}
+            />
+          </button>
+        </div>
       </div>
     );
   }
@@ -845,13 +981,13 @@ const App: React.FC = () => {
     const sortedPlayers = [...room.players].sort((a, b) => b.score - a.score);
 
     return (
-      <div className="flex flex-col h-screen h-[100dvh] bg-slate-50 text-slate-900 overflow-hidden">
+      <div className="flex flex-col h-screen h-[100dvh] text-slate-900 overflow-hidden" style={{ backgroundColor: '#EEF4FA' }}>
         <div className="p-6 pt-12 text-center">
           <div className="inline-block p-4 rounded-full bg-yellow-100 mb-4">
              <Trophy size={48} className="text-yellow-500 mx-auto" />
           </div>
           <h2 className="text-2xl font-bold text-slate-800">{t.scoreResult}</h2>
-          <p className="text-slate-500 mt-1 font-mono">{t.room}: {room.code}</p>
+          <p className="mt-1 font-mono" style={{ color: '#5B6E80' }}>{t.room}: {room.code}</p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-8" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -865,18 +1001,24 @@ const App: React.FC = () => {
                 `}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`
-                    w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm
-                    ${index === 0 ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-200' : 'bg-slate-100 text-slate-500'}
-                  `}>
+                  <div 
+                    className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm ${index === 0 ? 'bg-yellow-500 text-white shadow-lg shadow-yellow-200' : ''}`}
+                    style={index === 0 ? {} : { backgroundColor: '#EEF4FA', color: '#5B6E80' }}
+                  >
                     {index + 1}
                   </div>
-                  <span className="text-3xl filter drop-shadow-sm">{p.animalProfile.emoji}</span>
+                  <div className="relative">
+                    <span className="text-3xl filter drop-shadow-sm">{p.animalProfile.emoji}</span>
+                    {p.isSelf && (
+                      <span className="absolute -top-1 -right-1 text-xs font-semibold leading-none whitespace-nowrap" style={{ color: '#0E172B' }}>
+                        {t.you}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-col">
                     <span className="font-bold text-slate-800">
                       {lang === Lang.CN ? p.animalProfile.name_cn : p.animalProfile.name_en}
                     </span>
-                    {p.isSelf && <span className="text-xs text-indigo-500 font-semibold">{t.you}</span>}
                   </div>
                 </div>
                 <div className={`font-mono text-xl font-bold ${p.score >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>

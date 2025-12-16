@@ -46,7 +46,7 @@ const ANIMALS = [
 ];
 
 // 房间存储（内存，不持久化）
-const rooms = new Map(); // roomId -> { players: Map<playerId, player>, isEnded: boolean }
+const rooms = new Map(); // roomId -> { players: Map<playerId, player>, isEnded: boolean, transferHistory: Array }
 const playerToRoom = new Map(); // playerId -> roomId
 const playerToSocket = new Map(); // playerId -> WebSocket
 
@@ -109,13 +109,25 @@ function getRoomState(roomId) {
     roomId,
     players,
     isEnded: room.isEnded,
+    transferHistory: room.transferHistory || [],
   };
+}
+
+// 更新房间最后活动时间
+function updateRoomActivity(roomId) {
+  const room = rooms.get(roomId);
+  if (room && !room.isEnded) {
+    room.lastActivityAt = Date.now();
+  }
 }
 
 // 广播房间状态到所有玩家
 function broadcastRoomState(roomId) {
   const room = rooms.get(roomId);
   if (!room) return;
+
+  // 更新最后活动时间
+  updateRoomActivity(roomId);
 
   const state = getRoomState(roomId);
   const message = JSON.stringify({ type: 'ROOM_STATE', data: state });
@@ -186,9 +198,13 @@ function handleCreateRoom(ws, playerId) {
   const roomId = generateRoomId();
   
   // 创建空房间
+  const now = Date.now();
   const room = {
     players: new Map(),
     isEnded: false,
+    transferHistory: [], // 转分操作记录
+    createdAt: now, // 房间创建时间
+    lastActivityAt: now, // 最后活动时间
   };
   
   // 为新房间生成不重复的头像
@@ -228,6 +244,22 @@ function handleJoinRoom(ws, playerId, roomId) {
     ws.send(JSON.stringify({ type: 'ERROR', data: { message: '房间不存在' } }));
     return;
   }
+
+  // 确保 transferHistory 已初始化（兼容旧房间）
+  if (!room.transferHistory) {
+    room.transferHistory = [];
+  }
+
+  // 确保时间戳已初始化（兼容旧房间）
+  if (!room.createdAt) {
+    room.createdAt = Date.now();
+  }
+  if (!room.lastActivityAt) {
+    room.lastActivityAt = Date.now();
+  }
+
+  // 更新房间活动时间（每次加入房间都算作活动）
+  updateRoomActivity(roomId);
 
   if (room.isEnded) {
     // 如果房间已结束，清理该玩家的 playerToRoom 映射
@@ -319,6 +351,9 @@ function handleJoinRoom(ws, playerId, roomId) {
   playerToRoom.set(playerId, roomId);
   playerToSocket.set(playerId, ws);
 
+  // 更新房间活动时间
+  updateRoomActivity(roomId);
+
   // 广播新玩家加入
   broadcastRoomState(roomId);
 }
@@ -397,6 +432,50 @@ function handleTransfer(ws, playerId, targetPlayerId, amount) {
   // 原子操作：转分
   fromPlayer.score -= amount;
   toPlayer.score += amount;
+
+  // 记录转分操作
+  if (!room.transferHistory) {
+    room.transferHistory = [];
+  }
+  const transferRecord = {
+    fromPlayerId: playerId,
+    fromPlayerName: fromPlayer.avatar.name_cn,
+    fromPlayerEmoji: fromPlayer.avatar.emoji,
+    toPlayerId: targetPlayerId,
+    toPlayerName: toPlayer.avatar.name_cn,
+    toPlayerEmoji: toPlayer.avatar.emoji,
+    amount: amount,
+    timestamp: Date.now(),
+  };
+  room.transferHistory.push(transferRecord);
+
+  // 发送转分成功消息给发起者
+  ws.send(JSON.stringify({ 
+    type: 'TRANSFER_SUCCESS', 
+    data: {
+      fromPlayerName: fromPlayer.avatar.name_cn,
+      toPlayerName: toPlayer.avatar.name_cn,
+      toPlayerEmoji: toPlayer.avatar.emoji,
+      amount: amount,
+    }
+  }));
+
+  // 广播转分动画消息给所有玩家
+  const animationMessage = JSON.stringify({ 
+    type: 'TRANSFER_ANIMATION', 
+    data: {
+      fromPlayerId: playerId,
+      toPlayerId: targetPlayerId,
+      amount: amount,
+    }
+  });
+  
+  room.players.forEach((player) => {
+    const playerWs = playerToSocket.get(player.id);
+    if (playerWs && playerWs.readyState === 1) { // WebSocket.OPEN
+      playerWs.send(animationMessage);
+    }
+  });
 
   // 广播更新
   broadcastRoomState(roomId);
@@ -604,6 +683,53 @@ wss.on('connection', (ws) => {
     console.error('WebSocket error:', error);
   });
 });
+
+// 房间过期清理机制：每30分钟检查一次，清理超过48小时未活动的房间
+const ROOM_EXPIRY_HOURS = 48;
+const ROOM_EXPIRY_MS = ROOM_EXPIRY_HOURS * 60 * 60 * 1000; // 48小时（毫秒）
+const CLEANUP_INTERVAL_MS = 30 * 60 * 1000; // 30分钟检查一次
+
+function cleanupExpiredRooms() {
+  const now = Date.now();
+  const expiredRooms = [];
+
+  rooms.forEach((room, roomId) => {
+    // 跳过已结束的房间（它们会在其他逻辑中被清理）
+    if (room.isEnded) return;
+
+    // 检查是否超过48小时未活动
+    // 如果房间没有 lastActivityAt（旧房间），使用 createdAt
+    const lastActivity = room.lastActivityAt || room.createdAt || now;
+    const timeSinceLastActivity = now - lastActivity;
+    if (timeSinceLastActivity > ROOM_EXPIRY_MS) {
+      expiredRooms.push({ roomId, lastActivity: new Date(lastActivity).toISOString() });
+      
+      // 清理所有玩家的映射关系
+      const playerIds = Array.from(room.players.keys());
+      playerIds.forEach((pid) => {
+        playerToRoom.delete(pid);
+        // 注意：不删除 playerToSocket，因为可能还有连接
+      });
+
+      // 删除房间
+      rooms.delete(roomId);
+    }
+  });
+
+  if (expiredRooms.length > 0) {
+    console.log(`[清理过期房间] 清理了 ${expiredRooms.length} 个超过 ${ROOM_EXPIRY_HOURS} 小时未活动的房间:`);
+    expiredRooms.forEach(({ roomId, lastActivity }) => {
+      console.log(`  - 房间 ${roomId} (最后活动: ${lastActivity})`);
+    });
+  }
+}
+
+// 启动定时清理任务
+setInterval(cleanupExpiredRooms, CLEANUP_INTERVAL_MS);
+console.log(`[房间过期机制] 已启动，每 ${CLEANUP_INTERVAL_MS / 60000} 分钟检查一次，清理超过 ${ROOM_EXPIRY_HOURS} 小时未活动的房间`);
+
+// 服务器启动时立即执行一次清理（清理可能存在的过期房间）
+cleanupExpiredRooms();
 
 console.log(`WebSocket server running on ws://localhost:${PORT}`);
 
