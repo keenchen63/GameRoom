@@ -17,24 +17,25 @@
           scrollbar-width: none;  /* Firefox */
       }
       html {
+        height: 100%;
         height: -webkit-fill-available;
+        overflow: hidden;
       }
       body {
         -webkit-tap-highlight-color: transparent;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        /* Safari 视口高度修复 */
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
+        /* Safari 视口高度修复 - 使用固定高度而不是 min-height */
+        height: 100%;
+        height: -webkit-fill-available;
         /* 防止 Safari 自动缩放输入框 */
         -webkit-text-size-adjust: 100%;
-        /* 安全区域支持 */
-        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-      }
-      /* 修复 Safari 中固定定位的问题 */
-      @supports (-webkit-touch-callout: none) {
-        body {
-          padding: 0;
-        }
+        /* 移除默认 margin 和 padding */
+        margin: 0;
+        padding: 0;
+        /* 防止滚动 */
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
       }
       /* 防止 Safari 自动缩放输入框（字体大小至少 16px） */
       input, textarea, select {
@@ -42,8 +43,11 @@
       }
       /* 修复 Safari 中 100vh 的问题 */
       #root {
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
+        height: 100%;
+        height: -webkit-fill-available;
+        width: 100%;
+        overflow: hidden;
+        position: relative;
       }
       /* 修复 Safari 中 sticky header 遮挡内容的问题 */
       .safe-area-top {
@@ -67,8 +71,8 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-50 text-slate-900 h-screen w-screen overflow-hidden">
-    <div id="root" class="h-full w-full"></div>
+  <body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>

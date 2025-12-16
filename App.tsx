@@ -511,9 +511,9 @@ const App: React.FC = () => {
   // 2. Room View
   if (view === ViewState.ROOM && room) {
     return (
-      <div className="flex flex-col h-full bg-slate-50">
+      <div className="flex flex-col h-screen h-[100dvh] bg-slate-50 overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10">
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10" style={{ top: 'env(safe-area-inset-top, 0)' }}>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsQrModalOpen(true)}
@@ -526,14 +526,45 @@ const App: React.FC = () => {
               <p className="font-mono font-bold text-xl leading-none text-slate-800">{room.code}</p>
             </div>
           </div>
-          <button onClick={toggleLang} className="text-slate-400 font-bold text-sm">
-            {lang}
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleLang} className="text-slate-400 font-bold text-sm">
+              {lang}
+            </button>
+            {(() => {
+              const currentPlayer = room?.players.find(p => p.id === selfId);
+              const isHost = currentPlayer?.isHost === true;
+              
+              if (isHost) {
+                return (
+                  <button
+                    onClick={handleEndGameClick}
+                    className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 active:scale-95 transition-transform"
+                    title={t.endGame}
+                  >
+                    <LogOut size={20} />
+                  </button>
+                );
+              } else {
+                return (
+                  <button
+                    onClick={handleLeaveRoomClick}
+                    className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 active:scale-95 transition-transform"
+                    title={t.leaveRoom}
+                  >
+                    <LogOut size={20} />
+                  </button>
+                );
+              }
+            })()}
+          </div>
         </header>
 
         {/* Grid - 添加顶部间距避免被 header 遮挡 */}
-        <div className="flex-1 overflow-y-auto p-4" style={{ paddingTop: 'calc(1rem + 64px)' }}>
-          <div className="grid grid-cols-2 gap-4 pb-32">
+        <div className="flex-1 overflow-y-auto p-4" style={{ 
+          paddingTop: 'calc(1rem + 64px + env(safe-area-inset-top, 0px))',
+          WebkitOverflowScrolling: 'touch'
+        }}>
+          <div className="grid grid-cols-2 gap-4 pb-20">
             {room.players.map((p) => (
               <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <Avatar 
@@ -546,41 +577,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Floating Action Button */}
-        {(() => {
-          const currentPlayer = room?.players.find(p => p.id === selfId);
-          const isHost = currentPlayer?.isHost === true;
-          
-          if (isHost) {
-            // 房主显示结束房间
-            return (
-              <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-4 z-40">
-                <Button 
-                  fullWidth 
-                  variant="secondary" 
-                  onClick={handleEndGameClick}
-                >
-                  <LogOut size={18} />
-                  {t.endGame}
-                </Button>
-              </div>
-            );
-          } else {
-            // 非房主显示离开房间
-            return (
-              <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-4 z-40">
-                <Button 
-                  fullWidth 
-                  variant="secondary" 
-                  onClick={handleLeaveRoomClick}
-                >
-                  <LogOut size={18} />
-                  {t.leaveRoom}
-                </Button>
-              </div>
-            );
-          }
-        })()}
 
         {/* Modals & Toasts */}
         <TransferModal 
@@ -643,7 +639,7 @@ const App: React.FC = () => {
     const sortedPlayers = [...room.players].sort((a, b) => b.score - a.score);
 
     return (
-      <div className="flex flex-col h-full bg-slate-50 text-slate-900">
+      <div className="flex flex-col h-screen h-[100dvh] bg-slate-50 text-slate-900 overflow-hidden">
         <div className="p-6 pt-12 text-center">
           <div className="inline-block p-4 rounded-full bg-yellow-100 mb-4">
              <Trophy size={48} className="text-yellow-500 mx-auto" />

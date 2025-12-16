@@ -50,26 +50,28 @@ export const AvatarModal: React.FC<AvatarModalProps> = ({
           </button>
         </div>
 
-        {/* Avatar Grid */}
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          {ANIMALS.map((animal) => (
-            <button
-              key={animal.emoji}
-              onClick={() => setSelectedAvatar(animal)}
-              className={`
-                flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all
-                ${selectedAvatar.emoji === animal.emoji 
-                  ? 'border-indigo-500 bg-indigo-50' 
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }
-              `}
-            >
-              <div className="text-4xl">{animal.emoji}</div>
-              <span className="text-xs font-medium text-slate-600">
-                {lang === Lang.CN ? animal.name_cn : animal.name_en}
-              </span>
-            </button>
-          ))}
+        {/* Avatar Grid - 可滚动 */}
+        <div className="max-h-[60vh] overflow-y-auto mb-6 -webkit-overflow-scrolling-touch">
+          <div className="grid grid-cols-5 gap-4">
+            {ANIMALS.map((animal) => (
+              <button
+                key={animal.emoji}
+                onClick={() => setSelectedAvatar(animal)}
+                className={`
+                  flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all
+                  ${selectedAvatar.emoji === animal.emoji 
+                    ? 'border-indigo-500 bg-indigo-50' 
+                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }
+                `}
+              >
+                <div className="text-4xl">{animal.emoji}</div>
+                <span className="text-xs font-medium text-slate-600">
+                  {lang === Lang.CN ? animal.name_cn : animal.name_en}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Actions */}
