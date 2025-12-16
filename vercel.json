@@ -6,8 +6,19 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!.*\\.txt$).*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*\\.txt)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain"
+        }
+      ]
     }
   ]
 }
