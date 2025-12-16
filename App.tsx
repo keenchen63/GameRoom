@@ -33,8 +33,6 @@ const App: React.FC = () => {
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const isManualJoinRef = useRef<boolean>(false);
   const roomRef = useRef<RoomData | null>(null);
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const t = TEXT[lang];
   
   // 同步 room 到 ref，以便在事件处理函数中访问最新值
@@ -322,73 +320,92 @@ const App: React.FC = () => {
         }
       });
 
-    // 监听页面可见性变化，处理息屏后恢复的情况
-    let lastVisibilityChange = Date.now();
-    const handleVisibilityChange = () => {
+    // 统一的刷新触发函数（防止重复触发）
+    let lastRefreshTime = 0;
+    const triggerRefresh = () => {
       if (!isMounted) return;
       
-      // 页面从隐藏变为可见
-      if (document.visibilityState === 'visible') {
-        const now = Date.now();
-        // 防止频繁触发（至少间隔 1 秒）
-        if (now - lastVisibilityChange < 1000) return;
-        lastVisibilityChange = now;
-        
-        const ws = wsClientRef.current;
-        if (!ws) return;
-        
-        // 使用统一的刷新函数
-        forceRefreshRoomData();
-      }
-    };
-
-    // 添加页面可见性监听
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // 监听页面焦点变化（作为备用）
-    const handleFocus = () => {
-      if (document.visibilityState === 'visible') {
-        handleVisibilityChange();
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-
-    // 定期心跳检查连接状态（每 10 秒）
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (!isMounted) return;
+      const now = Date.now();
+      // 防止频繁触发（至少间隔 1 秒）
+      if (now - lastRefreshTime < 1000) return;
+      lastRefreshTime = now;
       
       const ws = wsClientRef.current;
       if (!ws) return;
-
-      // 发送心跳
-      if (ws.isConnected()) {
-        ws.send({ type: 'PING' });
-      } else {
-        // 连接断开，尝试重连并刷新
-        forceRefreshRoomData();
-      }
-    }, 10000);
-
-    // 定期自动刷新房间数据（每 30 秒，仅在房间中时）
-    refreshIntervalRef.current = setInterval(() => {
-      if (!isMounted) return;
       
-      // 只在房间页面时刷新
-      if (roomRef.current && document.visibilityState === 'visible') {
-        forceRefreshRoomData();
+      // 使用统一的刷新函数
+      forceRefreshRoomData();
+    };
+
+    // 1. 监听页面可见性变化（主要机制）
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // 延迟一下，确保页面完全恢复
+        setTimeout(() => {
+          if (document.visibilityState === 'visible' && document.hasFocus()) {
+            triggerRefresh();
+          }
+        }, 100);
       }
-    }, 30000);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 2. 监听窗口焦点变化（iPhone Safari 备用机制）
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        // 延迟一下，确保页面完全获得焦点
+        setTimeout(() => {
+          if (document.visibilityState === 'visible' && document.hasFocus()) {
+            triggerRefresh();
+          }
+        }, 100);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    
+    // 3. 监听页面显示事件（处理从后台恢复，iPhone 特别需要）
+    const handlePageShow = (event: PageTransitionEvent) => {
+      // 如果是从缓存恢复（back/forward），也需要刷新
+      // iPhone Safari 切回时，pageshow 事件会触发
+      if (event.persisted || document.visibilityState === 'visible') {
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            triggerRefresh();
+          }
+        }, 200);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    
+    // 4. 监听 WebSocket 连接恢复（当连接重新建立时）
+    const handleWebSocketReconnect = () => {
+      // WebSocket 重连成功后，如果在房间中，刷新数据
+      const savedRoomId = localStorage.getItem('roomId');
+      const savedPlayerId = localStorage.getItem('playerId');
+      const ws = wsClientRef.current;
+      
+      if (savedRoomId && savedPlayerId && ws && ws.isConnected()) {
+        // 延迟一下，确保连接稳定
+        setTimeout(() => {
+          if (ws.isConnected() && document.visibilityState === 'visible') {
+            triggerRefresh();
+          }
+        }, 300);
+      }
+    };
+    
+    // 注册 WebSocket 连接回调
+    ws.setOnConnect(handleWebSocketReconnect);
+
+    // 已取消：定期心跳机制
+    // 已取消：定期自动刷新机制
+    // 数据实时更新依赖服务器主动推送（WebSocket 双向通信）
 
     return () => {
       isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
+      window.removeEventListener('pageshow', handlePageShow);
       ws.disconnect();
     };
   }, []);
