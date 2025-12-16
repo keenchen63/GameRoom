@@ -791,9 +791,11 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* 底部署名 */}
-        <div className="absolute bottom-6 left-0 right-0 text-center">
-          <p className="text-sm" style={{ color: '#5B6E80' }}>© 2025 Keen</p>
+        {/* 底部署名 - 适配 iOS Safari 底部地址栏 */}
+        <div className="absolute left-0 right-0 text-center" style={{ 
+          bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' 
+        }}>
+          <p className="text-sm" style={{ color: '#5B6E80' }}>Keen 2025</p>
         </div>
 
         {/* Toast - 在所有视图中都显示 */}
