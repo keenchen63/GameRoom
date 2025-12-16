@@ -513,7 +513,7 @@ const App: React.FC = () => {
     return (
       <div className="flex flex-col h-full bg-slate-50">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10">
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsQrModalOpen(true)}
@@ -531,8 +531,8 @@ const App: React.FC = () => {
           </button>
         </header>
 
-        {/* Grid */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Grid - 添加顶部间距避免被 header 遮挡 */}
+        <div className="flex-1 overflow-y-auto p-4" style={{ paddingTop: 'calc(1rem + 64px)' }}>
           <div className="grid grid-cols-2 gap-4 pb-32">
             {room.players.map((p) => (
               <div key={p.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">

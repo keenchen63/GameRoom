@@ -45,6 +45,15 @@
         min-height: 100vh;
         min-height: -webkit-fill-available;
       }
+      /* 修复 Safari 中 sticky header 遮挡内容的问题 */
+      .safe-area-top {
+        padding-top: env(safe-area-inset-top, 0);
+        top: env(safe-area-inset-top, 0);
+      }
+      /* 确保内容不被 header 遮挡 */
+      .overflow-y-auto {
+        -webkit-overflow-scrolling: touch;
+      }
     </style>
   <script type="importmap">
 {
