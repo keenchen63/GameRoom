@@ -32,7 +32,13 @@ const App: React.FC = () => {
 
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const isManualJoinRef = useRef<boolean>(false);
+  const roomRef = useRef<RoomData | null>(null);
   const t = TEXT[lang];
+  
+  // 同步 room 到 ref，以便在事件处理函数中访问最新值
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
 
   // --- Helpers ---
   const showToast = (msg: string) => {
@@ -269,8 +275,82 @@ const App: React.FC = () => {
         }
       });
 
+    // 监听页面可见性变化，处理息屏后恢复的情况
+    let lastVisibilityChange = Date.now();
+    const handleVisibilityChange = () => {
+      if (!isMounted) return;
+      
+      // 页面从隐藏变为可见
+      if (document.visibilityState === 'visible') {
+        const now = Date.now();
+        // 防止频繁触发（至少间隔 1 秒）
+        if (now - lastVisibilityChange < 1000) return;
+        lastVisibilityChange = now;
+        
+        const ws = wsClientRef.current;
+        if (!ws) return;
+        
+        // 检查连接状态
+        if (!ws.isConnected()) {
+          // 连接断开，尝试重连
+          setIsConnecting(true);
+          ws.connect()
+            .then(() => {
+              if (isMounted) {
+                setIsConnecting(false);
+                // 重连成功后，如果在房间中，重新加入获取最新状态
+                const savedRoomId = localStorage.getItem('roomId');
+                const savedPlayerId = localStorage.getItem('playerId');
+                
+                if (savedRoomId && savedPlayerId && ws.isConnected()) {
+                  // 重新加入房间获取最新状态
+                  ws.send({
+                    type: 'JOIN_ROOM',
+                    playerId: savedPlayerId,
+                    roomId: savedRoomId,
+                  });
+                }
+              }
+            })
+            .catch(() => {
+              if (isMounted) {
+                setIsConnecting(false);
+              }
+            });
+        } else {
+          // 连接正常，如果在房间中，重新加入以获取最新状态
+          // 服务器端会返回最新的房间状态
+          const savedRoomId = localStorage.getItem('roomId');
+          const savedPlayerId = localStorage.getItem('playerId');
+          
+          // 使用 ref 获取最新的 room 状态
+          if (savedRoomId && savedPlayerId && roomRef.current) {
+            // 重新加入房间以获取最新状态（服务器会返回当前状态）
+            ws.send({
+              type: 'JOIN_ROOM',
+              playerId: savedPlayerId,
+              roomId: savedRoomId,
+            });
+          }
+        }
+      }
+    };
+
+    // 添加页面可见性监听
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 监听页面焦点变化（作为备用）
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        handleVisibilityChange();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
       ws.disconnect();
     };
   }, []);
