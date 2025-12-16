@@ -148,7 +148,7 @@
    npm install -g pm2
    
    # 使用配置文件启动（已包含在项目中）
-   pm2 start ecosystem.config.js --env production
+   pm2 start ecosystem.config.cjs --env production
    
    # 设置开机自启
    pm2 startup
