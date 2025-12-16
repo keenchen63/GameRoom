@@ -1,28 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#4338ca;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <!-- 背景圆角矩形，与首页样式一致 -->
-  <rect width="100" height="100" rx="24" fill="url(#bg)"/>
-  <!-- 手柄图标，简化设计 -->
-  <g transform="translate(50, 50)" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <!-- 左摇杆 -->
-    <circle cx="-18" cy="0" r="7" fill="white" opacity="0.95"/>
-    <circle cx="-18" cy="0" r="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.7"/>
-    <!-- 右摇杆 -->
-    <circle cx="18" cy="0" r="7" fill="white" opacity="0.95"/>
-    <circle cx="18" cy="0" r="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.7"/>
-    <!-- 左肩键 -->
-    <rect x="-30" y="-10" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
-    <rect x="-30" y="5" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
-    <!-- 右肩键 -->
-    <rect x="25" y="-10" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
-    <rect x="25" y="5" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="48"
+  height="48"
+  viewBox="0 0 48 48"
+  fill="none"
+  aria-hidden="true"
+>
+  <!-- 圆角背景 -->
+  <rect
+    x="2"
+    y="2"
+    width="44"
+    height="44"
+    rx="12"
+    fill="#355F8A"
+  />
+  <!-- 手柄图标（来自 lucide，居中缩放） -->
+  <g
+    transform="translate(7 7) scale(1.42)"
+    stroke="white"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  >
     <!-- 十字键 -->
-    <rect x="-6" y="-10" width="3" height="7" rx="0.5" fill="white" opacity="0.95"/>
-    <rect x="-9" y="-7" width="7" height="3" rx="0.5" fill="white" opacity="0.95"/>
+    <line x1="6" x2="10" y1="11" y2="11" />
+    <line x1="8" x2="8" y1="9" y2="13" />
+    <!-- 右侧按钮 -->
+    <line x1="15" x2="15.01" y1="12" y2="12" />
+    <line x1="18" x2="18.01" y1="10" y2="10" />
+    <!-- 手柄轮廓 -->
+    <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
   </g>
 </svg>
