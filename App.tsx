@@ -735,7 +735,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center items-center gap-8 max-w-md mx-auto w-full">
+        <div className="flex-1 flex flex-col justify-start items-center gap-8 max-w-md mx-auto w-full pt-16">
           <div className="text-center mb-4">
             <div className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl rotate-3" style={{ backgroundColor: '#2F5D8C', boxShadow: '0 20px 25px -5px rgba(47, 93, 140, 0.1), 0 10px 10px -5px rgba(47, 93, 140, 0.04)' }}>
               <Gamepad2 size={48} className="text-white" />
@@ -794,8 +794,11 @@ const App: React.FC = () => {
   if (view === ViewState.ROOM && room) {
     return (
       <div className="flex flex-col h-screen h-[100dvh] overflow-hidden" style={{ backgroundColor: '#EEF4FA' }}>
+        {/* 状态栏区域白色背景（iOS Safari） */}
+        <div className="fixed top-0 left-0 right-0 z-20 bg-white" style={{ height: 'env(safe-area-inset-top, 0px)' }}></div>
+        
         {/* Header */}
-        <header className="bg-white border-b px-6 py-4 flex justify-between items-center fixed top-0 left-0 right-0 z-10" style={{ top: 'env(safe-area-inset-top, 0)', borderColor: '#DCE8F5' }}>
+        <header className="bg-white border-b px-6 py-4 flex justify-between items-center fixed left-0 right-0 z-10" style={{ top: 'env(safe-area-inset-top, 0)', borderColor: '#DCE8F5' }}>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsQrModalOpen(true)}
