@@ -133,7 +133,8 @@ function handleCreateRoom(ws, playerId) {
   console.log(`handleCreateRoom: playerId=${playerId}`);
   console.log(`Current playerToRoom map:`, Array.from(playerToRoom.entries()));
   
-  // 如果玩家已经在房间中，先完全清理
+  // 无论 playerToRoom 中是否存在，都要彻底清理所有可能的残留映射
+  // 这样可以确保即使 handleEndGame 清理不彻底，也能在这里完全清理
   if (playerToRoom.has(playerId)) {
     const oldRoomId = playerToRoom.get(playerId);
     const oldRoom = rooms.get(oldRoomId);
@@ -172,13 +173,13 @@ function handleCreateRoom(ws, playerId) {
     // 清理映射关系（无论房间是否存在）
     console.log(`Cleaning up mappings for player ${playerId}`);
     playerToRoom.delete(playerId);
+  }
+  
+  // 无论 playerToRoom 中是否存在，都要清理 playerToSocket
+  // 这样可以确保即使有残留的 socket 映射，也能被清理
+  if (playerToSocket.has(playerId)) {
+    console.log(`Cleaning up socket mapping for player ${playerId}`);
     playerToSocket.delete(playerId);
-  } else {
-    // 即使 playerToRoom 中没有，也要确保 playerToSocket 中没有残留
-    if (playerToSocket.has(playerId)) {
-      console.log(`Found residual socket mapping for player ${playerId}, cleaning up`);
-      playerToSocket.delete(playerId);
-    }
   }
 
   // 创建新房间，重置所有玩家状态
@@ -426,11 +427,19 @@ function handleEndGame(ws, playerId) {
   // 先广播房间状态（包含结算数据），客户端会保存到 state 中
   broadcastRoomState(roomId);
   
-  // 清理所有玩家的 playerToRoom 映射（房间已结束，不允许 rejoin）
-  room.players.forEach((player) => {
-    if (playerToRoom.get(player.id) === roomId) {
-      playerToRoom.delete(player.id);
-      console.log(`Cleaned up playerToRoom mapping for player ${player.id} from ended room ${roomId}`);
+  // 清理所有玩家的 playerToRoom 和 playerToSocket 映射（房间已结束，不允许 rejoin）
+  // 注意：必须保存玩家列表，因为删除房间后无法访问
+  const playerIds = Array.from(room.players.keys());
+  playerIds.forEach((pid) => {
+    // 清理 playerToRoom（只清理指向当前房间的映射）
+    if (playerToRoom.get(pid) === roomId) {
+      playerToRoom.delete(pid);
+      console.log(`Cleaned up playerToRoom mapping for player ${pid} from ended room ${roomId}`);
+    }
+    // 清理 playerToSocket（无论指向哪个房间，都清理，因为房间已结束）
+    if (playerToSocket.has(pid)) {
+      playerToSocket.delete(pid);
+      console.log(`Cleaned up playerToSocket mapping for player ${pid} from ended room ${roomId}`);
     }
   });
   
@@ -510,10 +519,12 @@ wss.on('connection', (ws) => {
       
       switch (message.type) {
         case 'CREATE_ROOM':
-          if (!playerId) {
-            playerId = message.playerId || generatePlayerId();
-          }
-          handleCreateRoom(ws, playerId);
+          // 强制使用 message 中的 playerId，不要使用连接级别的 playerId
+          // 因为前端每次创建房间都会生成新的 playerId，避免使用旧的 playerId 导致映射问题
+          const createPlayerId = message.playerId || generatePlayerId();
+          handleCreateRoom(ws, createPlayerId);
+          // 更新连接级别的 playerId，以便后续消息使用
+          playerId = createPlayerId;
           break;
 
         case 'JOIN_ROOM':
@@ -571,13 +582,21 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     if (playerId) {
-      // 注意：不删除玩家，允许 rejoin
-      // 只删除 socket 映射，保留玩家在房间中的信息
       const roomId = playerToRoom.get(playerId);
-      console.log(`Player ${playerId} disconnected from room ${roomId}, keeping room data for rejoin`);
-      console.log(`Room ${roomId} still exists:`, rooms.has(roomId));
-      playerToSocket.delete(playerId);
-      // 不删除 playerToRoom，这样 rejoin 时可以找到房间
+      const room = roomId ? rooms.get(roomId) : null;
+      
+      // 如果房间不存在或已结束，清理所有映射（不允许 rejoin）
+      if (!room || room.isEnded) {
+        console.log(`Player ${playerId} disconnected from ${room ? 'ended' : 'non-existent'} room ${roomId}, cleaning up all mappings`);
+        playerToRoom.delete(playerId);
+        playerToSocket.delete(playerId);
+      } else {
+        // 房间存在且未结束，允许 rejoin
+        // 只删除 socket 映射，保留玩家在房间中的信息和 playerToRoom 映射
+        console.log(`Player ${playerId} disconnected from room ${roomId}, keeping room data for rejoin`);
+        playerToSocket.delete(playerId);
+        // 不删除 playerToRoom，这样 rejoin 时可以找到房间
+      }
     }
   });
 

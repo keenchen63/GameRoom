@@ -97,6 +97,11 @@ const App: React.FC = () => {
 
     // 如果房间已结束，进入结算页面
     if (data.isEnded) {
+      // 房间结束后，清除 localStorage 中的 roomId 和 playerId
+      // 防止使用旧的 playerId 创建新房间时出现问题
+      localStorage.removeItem('roomId');
+      localStorage.removeItem('playerId');
+      setSelfId(''); // 清空 selfId state
       setView(ViewState.SETTLEMENT);
     } else {
       setView(ViewState.ROOM);
@@ -183,6 +188,10 @@ const App: React.FC = () => {
           if (!autoRejoinAttempted || isManualJoin) {
             setView(ViewState.HOME);
             setRoom(null);
+            // 如果是手动加入且房间不存在，清空输入框
+            if (isManualJoin && errorMessage === '房间不存在') {
+              setInputCode('');
+            }
           }
         }
         
@@ -275,16 +284,12 @@ const App: React.FC = () => {
 
     // 清除旧的房间信息
     localStorage.removeItem('roomId');
-
-    // 生成或获取 playerId
-    let playerId = selfId || localStorage.getItem('playerId');
-    if (!playerId) {
-      playerId = 'p_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-      setSelfId(playerId);
-      localStorage.setItem('playerId', playerId);
-    } else {
-      setSelfId(playerId);
-    }
+    
+    // 创建新房间时，总是生成新的 playerId，避免使用旧的 playerId 导致后端映射问题
+    // 这样可以确保每次创建房间都是全新的玩家身份
+    const playerId = 'p_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    setSelfId(playerId);
+    localStorage.setItem('playerId', playerId);
 
     ws.send({
       type: 'CREATE_ROOM',
@@ -292,8 +297,9 @@ const App: React.FC = () => {
     });
   };
 
-  const handleJoinRoom = () => {
-    if (inputCode.length !== 4) return;
+  const handleJoinRoom = (roomCode?: string) => {
+    const code = roomCode || inputCode;
+    if (code.length !== 4) return;
 
     const ws = wsClientRef.current;
     if (!ws || !ws.isConnected()) {
@@ -314,14 +320,14 @@ const App: React.FC = () => {
 
     // 保存 roomId 和 playerId（在发送请求之前）
     // 注意：如果房间不存在，会在错误处理中清除
-    localStorage.setItem('roomId', inputCode);
+    localStorage.setItem('roomId', code);
     localStorage.setItem('playerId', playerId);
 
     // 发送加入房间请求
     ws.send({
       type: 'JOIN_ROOM',
       playerId,
-      roomId: inputCode,
+      roomId: code,
     });
   };
 
@@ -466,13 +472,16 @@ const App: React.FC = () => {
                   placeholder={t.roomCodePlaceholder}
                   className="flex-1 px-4 py-3 text-lg outline-none bg-transparent placeholder:text-slate-400 text-center tracking-widest font-mono"
                   value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ''); // 只允许数字
+                    setInputCode(value);
+                    // 当输入长度为4时，自动加入房间
+                    if (value.length === 4) {
+                      handleJoinRoom(value);
+                    }
+                  }}
                 />
              </div>
-             
-             <Button fullWidth onClick={handleJoinRoom} disabled={inputCode.length !== 4 || isConnecting}>
-               {isConnecting ? t.mockProcessing : t.enterRoom}
-             </Button>
 
              <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
@@ -485,11 +494,6 @@ const App: React.FC = () => {
 
              <Button fullWidth variant="secondary" onClick={createRoom} disabled={isConnecting}>
                {isConnecting ? t.mockProcessing : t.createRoom}
-             </Button>
-
-             <Button fullWidth variant="ghost" onClick={() => console.log('Scan QR clicked')}>
-               <QrCode size={20} />
-               <span>{t.scanQr}</span>
              </Button>
           </div>
         </div>
@@ -553,7 +557,7 @@ const App: React.FC = () => {
               <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-4 z-40">
                 <Button 
                   fullWidth 
-                  variant="danger" 
+                  variant="secondary" 
                   onClick={handleEndGameClick}
                 >
                   <LogOut size={18} />
@@ -567,7 +571,7 @@ const App: React.FC = () => {
               <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-4 z-40">
                 <Button 
                   fullWidth 
-                  variant="danger" 
+                  variant="secondary" 
                   onClick={handleLeaveRoomClick}
                 >
                   <LogOut size={18} />
@@ -609,7 +613,7 @@ const App: React.FC = () => {
           title={lang === Lang.CN ? '确认结束房间' : 'Confirm End Room'}
           confirmText={lang === Lang.CN ? '确认结束' : 'Confirm End'}
           cancelText={t.cancel}
-          variant="danger"
+          variant="warning"
           lang={lang}
         />
 
@@ -681,11 +685,16 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-6 bg-white border-t border-slate-200 safe-area-bottom">
-           <Button fullWidth variant="secondary" onClick={handleExit}>
-             <ArrowLeft size={18} />
-             {t.backHome}
-           </Button>
+        {/* Floating Action Button - 与结束房间按钮样式一致 */}
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 w-full max-w-sm px-4 z-40">
+          <Button 
+            fullWidth 
+            variant="secondary" 
+            onClick={handleExit}
+          >
+            <ArrowLeft size={18} />
+            {t.backHome}
+          </Button>
         </div>
 
         {/* Toast */}

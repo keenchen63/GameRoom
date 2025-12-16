@@ -44,7 +44,7 @@ export const TEXT = {
   [Lang.CN]: {
     createRoom: '创建房间',
     enterRoom: '进入房间',
-    roomCodePlaceholder: '输入4位房间码',
+    roomCodePlaceholder: '输入房间码加入房间',
     scanQr: '扫码进入',
     room: '房间',
     endGame: '结束房间',
@@ -64,7 +64,7 @@ export const TEXT = {
   [Lang.EN]: {
     createRoom: 'Create Room',
     enterRoom: 'Enter Room',
-    roomCodePlaceholder: '4-Digit Room Code',
+    roomCodePlaceholder: 'Enter room code to join',
     scanQr: 'Scan QR',
     room: 'Room',
     endGame: 'End Room',
