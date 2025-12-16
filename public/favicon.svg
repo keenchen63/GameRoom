@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4338ca;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- 背景圆角矩形，与首页样式一致 -->
+  <rect width="100" height="100" rx="24" fill="url(#bg)"/>
+  <!-- 手柄图标，简化设计 -->
+  <g transform="translate(50, 50)" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 左摇杆 -->
+    <circle cx="-18" cy="0" r="7" fill="white" opacity="0.95"/>
+    <circle cx="-18" cy="0" r="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.7"/>
+    <!-- 右摇杆 -->
+    <circle cx="18" cy="0" r="7" fill="white" opacity="0.95"/>
+    <circle cx="18" cy="0" r="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.7"/>
+    <!-- 左肩键 -->
+    <rect x="-30" y="-10" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
+    <rect x="-30" y="5" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
+    <!-- 右肩键 -->
+    <rect x="25" y="-10" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
+    <rect x="25" y="5" width="5" height="5" rx="0.5" fill="white" opacity="0.95"/>
+    <!-- 十字键 -->
+    <rect x="-6" y="-10" width="3" height="7" rx="0.5" fill="white" opacity="0.95"/>
+    <rect x="-9" y="-7" width="7" height="3" rx="0.5" fill="white" opacity="0.95"/>
+  </g>
+</svg>

@@ -1,0 +1,5 @@
+{
+  "name": "Animal Scoreboard",
+  "description": "A mobile-first, static scorekeeping web app with animal avatars and simple room management simulation.",
+  "requestFramePermissions": []
+}
