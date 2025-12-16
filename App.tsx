@@ -727,7 +727,7 @@ const App: React.FC = () => {
   // 1. Home View
   if (view === ViewState.HOME) {
     return (
-      <div className="flex flex-col h-full p-6 relative" style={{ backgroundColor: '#EEF4FA' }}>
+      <div className="flex flex-col h-screen h-[100dvh] p-6 relative" style={{ backgroundColor: '#EEF4FA', minHeight: '-webkit-fill-available' }}>
         <div className="absolute top-6 right-6">
           <button onClick={toggleLang} className="flex items-center gap-1 font-medium bg-white px-3 py-1.5 rounded-full shadow-sm border" style={{ color: '#5B6E80', borderColor: '#DCE8F5' }}>
             <Languages size={16} />

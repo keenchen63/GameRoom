@@ -20,6 +20,7 @@
         height: 100%;
         height: -webkit-fill-available;
         overflow: hidden;
+        background-color: #EEF4FA; /* 设置默认背景色，确保 iOS Safari 显示正确 */
       }
       body {
         -webkit-tap-highlight-color: transparent;
@@ -36,6 +37,7 @@
         overflow: hidden;
         position: fixed;
         width: 100%;
+        background-color: #EEF4FA; /* 设置默认背景色，确保 iOS Safari 显示正确 */
       }
       /* 防止 Safari 自动缩放输入框（字体大小至少 16px） */
       input, textarea, select {
@@ -48,6 +50,7 @@
         width: 100%;
         overflow: hidden;
         position: relative;
+        background-color: #EEF4FA; /* 设置默认背景色，确保 iOS Safari 显示正确 */
       }
       /* 修复 Safari 中 sticky header 遮挡内容的问题 */
       .safe-area-top {
@@ -71,7 +74,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body class="text-slate-900" style="background-color: #EEF4FA;">
     <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
