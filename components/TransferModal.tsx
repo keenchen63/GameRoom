@@ -66,7 +66,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
             className="w-full text-4xl font-mono font-bold text-center py-4 border-b-2 border-slate-200 focus:border-indigo-500 focus:outline-none bg-transparent"
-            autoFocus
           />
         </div>
 

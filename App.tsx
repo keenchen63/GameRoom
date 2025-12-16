@@ -33,12 +33,54 @@ const App: React.FC = () => {
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const isManualJoinRef = useRef<boolean>(false);
   const roomRef = useRef<RoomData | null>(null);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const t = TEXT[lang];
   
   // 同步 room 到 ref，以便在事件处理函数中访问最新值
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  // 强制刷新房间数据的函数
+  const forceRefreshRoomData = () => {
+    const ws = wsClientRef.current;
+    if (!ws) return false;
+
+    const savedRoomId = localStorage.getItem('roomId');
+    const savedPlayerId = localStorage.getItem('playerId');
+    
+    if (!savedRoomId || !savedPlayerId) return false;
+
+    // 如果连接断开，先重连
+    if (!ws.isConnected()) {
+      setIsConnecting(true);
+      ws.connect()
+        .then(() => {
+          setIsConnecting(false);
+          // 重连成功后刷新数据
+          if (ws.isConnected()) {
+            ws.send({
+              type: 'JOIN_ROOM',
+              playerId: savedPlayerId,
+              roomId: savedRoomId,
+            });
+          }
+        })
+        .catch(() => {
+          setIsConnecting(false);
+        });
+      return false;
+    }
+
+    // 连接正常，请求最新数据
+    ws.send({
+      type: 'JOIN_ROOM',
+      playerId: savedPlayerId,
+      roomId: savedRoomId,
+    });
+    return true;
+  };
 
   // --- Helpers ---
   const showToast = (msg: string) => {
@@ -168,6 +210,11 @@ const App: React.FC = () => {
       }
     });
 
+    ws.on('PONG', () => {
+      // 心跳响应，连接正常
+      // 不需要特殊处理，只是确认连接正常
+    });
+
     ws.on('ERROR', (data) => {
       if (isMounted) {
         const errorMessage = data?.message || '发生错误';
@@ -290,49 +337,8 @@ const App: React.FC = () => {
         const ws = wsClientRef.current;
         if (!ws) return;
         
-        // 检查连接状态
-        if (!ws.isConnected()) {
-          // 连接断开，尝试重连
-          setIsConnecting(true);
-          ws.connect()
-            .then(() => {
-              if (isMounted) {
-                setIsConnecting(false);
-                // 重连成功后，如果在房间中，重新加入获取最新状态
-                const savedRoomId = localStorage.getItem('roomId');
-                const savedPlayerId = localStorage.getItem('playerId');
-                
-                if (savedRoomId && savedPlayerId && ws.isConnected()) {
-                  // 重新加入房间获取最新状态
-                  ws.send({
-                    type: 'JOIN_ROOM',
-                    playerId: savedPlayerId,
-                    roomId: savedRoomId,
-                  });
-                }
-              }
-            })
-            .catch(() => {
-              if (isMounted) {
-                setIsConnecting(false);
-              }
-            });
-        } else {
-          // 连接正常，如果在房间中，重新加入以获取最新状态
-          // 服务器端会返回最新的房间状态
-          const savedRoomId = localStorage.getItem('roomId');
-          const savedPlayerId = localStorage.getItem('playerId');
-          
-          // 使用 ref 获取最新的 room 状态
-          if (savedRoomId && savedPlayerId && roomRef.current) {
-            // 重新加入房间以获取最新状态（服务器会返回当前状态）
-            ws.send({
-              type: 'JOIN_ROOM',
-              playerId: savedPlayerId,
-              roomId: savedRoomId,
-            });
-          }
-        }
+        // 使用统一的刷新函数
+        forceRefreshRoomData();
       }
     };
 
@@ -347,10 +353,42 @@ const App: React.FC = () => {
     };
     window.addEventListener('focus', handleFocus);
 
+    // 定期心跳检查连接状态（每 10 秒）
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (!isMounted) return;
+      
+      const ws = wsClientRef.current;
+      if (!ws) return;
+
+      // 发送心跳
+      if (ws.isConnected()) {
+        ws.send({ type: 'PING' });
+      } else {
+        // 连接断开，尝试重连并刷新
+        forceRefreshRoomData();
+      }
+    }, 10000);
+
+    // 定期自动刷新房间数据（每 30 秒，仅在房间中时）
+    refreshIntervalRef.current = setInterval(() => {
+      if (!isMounted) return;
+      
+      // 只在房间页面时刷新
+      if (roomRef.current && document.visibilityState === 'visible') {
+        forceRefreshRoomData();
+      }
+    }, 30000);
+
     return () => {
       isMounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
       ws.disconnect();
     };
   }, []);
@@ -422,8 +460,28 @@ const App: React.FC = () => {
 
   const handleChangeAvatar = (avatar: AnimalProfile) => {
     const ws = wsClientRef.current;
-    if (!ws || !ws.isConnected()) {
+    if (!ws) {
       showToast('连接未就绪，请稍候');
+      return;
+    }
+
+    // 操作前强制刷新数据
+    forceRefreshRoomData();
+
+    if (!ws.isConnected()) {
+      showToast('连接断开，正在重连...');
+      // 延迟重试
+      setTimeout(() => {
+        if (ws.isConnected()) {
+          ws.send({
+            type: 'CHANGE_AVATAR',
+            playerId: selfId,
+            avatar,
+          });
+        } else {
+          showToast('连接失败，请稍后重试');
+        }
+      }, 2000);
       return;
     }
 
@@ -439,11 +497,38 @@ const App: React.FC = () => {
     if (!selectedPlayer || !room) return;
 
     const ws = wsClientRef.current;
-    if (!ws || !ws.isConnected()) {
+    if (!ws) {
       showToast('连接未就绪，请稍候');
       return;
     }
 
+    // 操作前强制刷新数据，确保使用最新状态
+    const refreshSuccess = forceRefreshRoomData();
+    
+    // 如果连接断开，等待重连
+    if (!ws.isConnected()) {
+      if (!refreshSuccess) {
+        showToast('连接断开，正在重连...');
+        // 延迟重试
+        setTimeout(() => {
+          if (ws.isConnected()) {
+            ws.send({
+              type: 'TRANSFER',
+              playerId: selfId,
+              targetPlayerId: selectedPlayer.id,
+              amount,
+            });
+            setIsTransferModalOpen(false);
+            setSelectedPlayer(null);
+          } else {
+            showToast('连接失败，请稍后重试');
+          }
+        }, 2000);
+      }
+      return;
+    }
+
+    // 连接正常，发送转分请求
     ws.send({
       type: 'TRANSFER',
       playerId: selfId,
@@ -462,8 +547,32 @@ const App: React.FC = () => {
 
   const handleEndGameConfirm = () => {
     const ws = wsClientRef.current;
-    if (!ws || !ws.isConnected()) {
+    if (!ws) {
       showToast('连接未就绪，请稍候');
+      return;
+    }
+
+    // 操作前强制刷新数据
+    forceRefreshRoomData();
+
+    if (!ws.isConnected()) {
+      showToast('连接断开，正在重连...');
+      // 延迟重试
+      setTimeout(() => {
+        if (ws.isConnected()) {
+          const currentPlayer = roomRef.current?.players.find(p => p.id === selfId);
+          if (!currentPlayer?.isHost) {
+            showToast(lang === Lang.CN ? '只有房主可以结束房间' : 'Only host can end room');
+            return;
+          }
+          ws.send({
+            type: 'END_GAME',
+            playerId: selfId,
+          });
+        } else {
+          showToast('连接失败，请稍后重试');
+        }
+      }, 2000);
       return;
     }
 

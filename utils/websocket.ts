@@ -130,8 +130,15 @@ export class WebSocketClient {
 
   send(message: WSMessage) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+      try {
+        this.ws.send(JSON.stringify(message));
+        return true;
+      } catch (error) {
+        console.error('Error sending message:', error);
+        return false;
+      }
     }
+    return false;
   }
 
   on(event: string, handler: (data: any) => void) {
