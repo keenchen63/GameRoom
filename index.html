@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>GameRoom</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,9 +16,34 @@
           -ms-overflow-style: none;  /* IE and Edge */
           scrollbar-width: none;  /* Firefox */
       }
+      html {
+        height: -webkit-fill-available;
+      }
       body {
         -webkit-tap-highlight-color: transparent;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        /* Safari 视口高度修复 */
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        /* 防止 Safari 自动缩放输入框 */
+        -webkit-text-size-adjust: 100%;
+        /* 安全区域支持 */
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      /* 修复 Safari 中固定定位的问题 */
+      @supports (-webkit-touch-callout: none) {
+        body {
+          padding: 0;
+        }
+      }
+      /* 防止 Safari 自动缩放输入框（字体大小至少 16px） */
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+      /* 修复 Safari 中 100vh 的问题 */
+      #root {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
       }
     </style>
   <script type="importmap">
