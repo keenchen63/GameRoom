@@ -791,6 +791,11 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {/* 底部署名 */}
+        <div className="absolute bottom-6 left-0 right-0 text-center">
+          <p className="text-sm" style={{ color: '#5B6E80' }}>© 2025 Keen</p>
+        </div>
+
         {/* Toast - 在所有视图中都显示 */}
         {toastMessage && (
           <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-900/90 text-white px-6 py-3 rounded-full shadow-xl pointer-events-none transition-all z-50 animate-bounce-short">
