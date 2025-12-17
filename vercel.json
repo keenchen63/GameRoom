@@ -4,14 +4,12 @@
   "installCommand": "npm install",
   "devCommand": "npm run dev",
   "outputDirectory": "dist",
-
   "rewrites": [
     {
-      "source": "/((?!.*\\.(txt|js|json|svg|ico|png|jpg|jpeg|gif|webp|css|woff|woff2|ttf|eot|woff2)$).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
-
   "headers": [
     {
       "source": "/(.*\\.txt)",
