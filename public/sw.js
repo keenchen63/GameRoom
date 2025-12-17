@@ -4,7 +4,8 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/favicon.svg',
-  '/manifest.json'
+  '/manifest.json',
+  '/sw.js'
 ];
 
 // 安装 Service Worker
