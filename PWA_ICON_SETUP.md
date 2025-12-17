@@ -2,19 +2,26 @@
 
 ## 问题
 
-某些浏览器和平台（特别是 Android 和部分桌面浏览器）可能不完全支持 SVG 作为 PWA 图标。为了确保图标在所有平台上正常显示，建议使用 PNG 格式的图标。
+1. **iOS 特殊要求**：iOS 不使用 `manifest.json` 中的 `icons` 配置，而是使用 HTML 中的 `<link rel="apple-touch-icon">` 标签，并且**必须使用 PNG 格式**，不支持 SVG。
+
+2. **Android 和其他平台**：某些浏览器和平台（特别是 Android 和部分桌面浏览器）可能不完全支持 SVG 作为 PWA 图标。为了确保图标在所有平台上正常显示，建议使用 PNG 格式的图标。
 
 ## 解决方案
 
 ### 方法一：使用在线工具转换 SVG 为 PNG
 
-1. 访问在线 SVG 转 PNG 工具（如 https://svgtopng.com/）
+1. 访问在线 SVG 转 PNG 工具（如 https://svgtopng.com/ 或 https://convertio.co/svg-png/）
 2. 上传 `public/favicon.svg` 文件
 3. 生成以下尺寸的 PNG 图标：
-   - 192x192 像素 → 保存为 `icon-192.png`
-   - 512x512 像素 → 保存为 `icon-512.png`
-4. 将生成的 PNG 文件放入 `public/` 目录
-5. 更新 `manifest.json` 使用 PNG 图标
+   - **iOS 必需**：
+     - 120x120 像素 → 保存为 `icon-120.png`
+     - 152x152 像素 → 保存为 `icon-152.png`
+     - 180x180 像素 → 保存为 `icon-180.png`（主要）
+   - **Android/其他平台**：
+     - 192x192 像素 → 保存为 `icon-192.png`
+     - 512x512 像素 → 保存为 `icon-512.png`
+4. 将生成的 PNG 文件放入 `public/` 目录（或创建 `public/icons/` 目录）
+5. 更新 `index.html` 和 `manifest.json` 使用 PNG 图标
 
 ### 方法二：使用 ImageMagick 或类似工具
 
@@ -31,7 +38,19 @@ convert -background none -resize 512x512 public/favicon.svg public/icon-512.png
 
 创建一个转换脚本（需要安装 `sharp` 或 `svg2png` 包）。
 
-## 更新 manifest.json
+## 更新配置
+
+### 1. 更新 index.html
+
+在 `index.html` 的 `<head>` 部分，更新 `apple-touch-icon` 标签（iOS 需要 PNG 格式）：
+
+```html
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
+```
+
+### 2. 更新 manifest.json
 
 将 `manifest.json` 中的图标配置更新为：
 
@@ -57,6 +76,15 @@ convert -background none -resize 512x512 public/favicon.svg public/icon-512.png
   }
 ]
 ```
+
+### 3. 创建图标文件
+
+将生成的 PNG 文件放入 `public/` 目录（或 `public/icons/` 目录）：
+- `icon-120.png` (120x120) - iOS
+- `icon-152.png` (152x152) - iOS
+- `icon-180.png` (180x180) - iOS（主要）
+- `icon-192.png` (192x192) - Android/其他平台
+- `icon-512.png` (512x512) - Android/其他平台
 
 ## 测试步骤
 
