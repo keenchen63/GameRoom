@@ -3,7 +3,11 @@ const CACHE_NAME = 'gameroom-v1';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/favicon.svg',
+  '/favicon/favicon.svg',
+  '/favicon/favicon.ico',
+  '/favicon/apple-touch-icon.png',
+  '/favicon/web-app-manifest-192x192.png',
+  '/favicon/web-app-manifest-512x512.png',
   '/manifest.json',
   '/sw.js'
 ];
