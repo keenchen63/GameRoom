@@ -1,0 +1,20 @@
+{
+  "name": "GameRoom",
+  "short_name": "GameRoom",
+  "description": "实时多人计分游戏房间系统",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EEF4FA",
+  "theme_color": "#EEF4FA",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

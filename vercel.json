@@ -6,7 +6,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!.*\\.txt$).*)",
+      "source": "/((?!.*\\.(txt|js|json|svg|ico|png|jpg|jpeg|gif|webp|css|woff|woff2|ttf|eot)$).*)",
       "destination": "/index.html"
     }
   ],
