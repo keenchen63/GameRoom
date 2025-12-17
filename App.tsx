@@ -792,7 +792,7 @@ const App: React.FC = () => {
         </div>
 
         {/* 底部署名 - 适配 iOS Safari 底部地址栏 */}
-        <div className="absolute left-0 right-0 text-center" style={{ 
+        <div className="fixed left-0 right-0 text-center z-40" style={{ 
           bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' 
         }}>
           <p className="text-sm" style={{ color: '#5B6E80' }}>© 2025 Keen</p>
