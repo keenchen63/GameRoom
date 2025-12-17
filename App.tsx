@@ -104,6 +104,25 @@ const App: React.FC = () => {
     setTimeout(() => setToastMessage(null), 2000);
   };
 
+  // 翻译服务器返回的错误消息
+  const translateErrorMessage = (errorMsg: string): string => {
+    const errorMap: Record<string, { cn: string; en: string }> = {
+      '房间不存在': { cn: '房间不存在', en: 'Room not found' },
+      '房间已结束': { cn: '房间已结束', en: 'Room ended' },
+      '你不在任何房间中': { cn: '你不在任何房间中', en: 'You are not in any room' },
+      '玩家不存在': { cn: '玩家不存在', en: 'Player not found' },
+      '不能给自己转分': { cn: '不能给自己转分', en: 'Cannot transfer points to yourself' },
+      '积分为0才能离开房间': { cn: '积分为0才能离开房间', en: 'Score must be 0 to leave room' },
+      '只有房主可以结束房间': { cn: '只有房主可以结束房间', en: 'Only host can end room' },
+    };
+
+    const mapped = errorMap[errorMsg];
+    if (mapped) {
+      return lang === Lang.CN ? mapped.cn : mapped.en;
+    }
+    return errorMsg; // 如果找不到映射，返回原消息
+  };
+
   const toggleLang = () => {
     setLang(prev => prev === Lang.CN ? Lang.EN : Lang.CN);
   };
@@ -301,8 +320,9 @@ const App: React.FC = () => {
 
     ws.on('ERROR', (data) => {
       if (isMounted) {
-        const errorMessage = data?.message || '发生错误';
+        const errorMessage = data?.message || (lang === Lang.CN ? '发生错误' : 'An error occurred');
         const isManualJoin = isManualJoinRef.current;
+        const translatedError = translateErrorMessage(errorMessage);
         
         // 如果是自动 rejoin 失败，静默处理，不显示错误提示
         if (autoRejoinAttempted && !isManualJoin && (errorMessage === '房间不存在' || errorMessage === '房间已结束')) {
@@ -316,7 +336,7 @@ const App: React.FC = () => {
         }
         
         // 显示错误提示（包括房间不存在和其他所有错误）
-        showToast(errorMessage);
+        showToast(translatedError);
         
         // 如果房间不存在或已结束，清除 localStorage 中的房间信息
         if (errorMessage === '房间不存在' || errorMessage === '房间已结束') {
@@ -401,7 +421,7 @@ const App: React.FC = () => {
           // 只在非手动关闭时显示错误
           const errorMessage = error instanceof Error ? error.message : String(error);
           if (errorMessage !== 'WebSocket connection closed before established') {
-            showToast('连接失败，请刷新重试');
+            showToast(t.connectionFailed);
           }
         }
       });
@@ -499,7 +519,7 @@ const App: React.FC = () => {
   const createRoom = () => {
     const ws = wsClientRef.current;
     if (!ws || !ws.isConnected()) {
-      showToast('连接未就绪，请稍候');
+      showToast(t.connectionNotReady);
       return;
     }
 
@@ -524,7 +544,7 @@ const App: React.FC = () => {
 
     const ws = wsClientRef.current;
     if (!ws || !ws.isConnected()) {
-      showToast('连接未就绪，请稍候');
+      showToast(t.connectionNotReady);
       return;
     }
 
@@ -564,7 +584,7 @@ const App: React.FC = () => {
   const handleChangeAvatar = (avatar: AnimalProfile) => {
     const ws = wsClientRef.current;
     if (!ws) {
-      showToast('连接未就绪，请稍候');
+      showToast(t.connectionNotReady);
       return;
     }
 
@@ -572,7 +592,7 @@ const App: React.FC = () => {
     forceRefreshRoomData();
 
     if (!ws.isConnected()) {
-      showToast('连接断开，正在重连...');
+      showToast(t.connectionDisconnected);
       // 延迟重试
       setTimeout(() => {
         if (ws.isConnected()) {
@@ -582,7 +602,7 @@ const App: React.FC = () => {
             avatar,
           });
         } else {
-          showToast('连接失败，请稍后重试');
+          showToast(t.connectionFailedRetry);
         }
       }, 2000);
       return;
@@ -601,7 +621,7 @@ const App: React.FC = () => {
 
     const ws = wsClientRef.current;
     if (!ws) {
-      showToast('连接未就绪，请稍候');
+      showToast(t.connectionNotReady);
       return;
     }
 
@@ -611,7 +631,7 @@ const App: React.FC = () => {
     // 如果连接断开，等待重连
     if (!ws.isConnected()) {
       if (!refreshSuccess) {
-        showToast('连接断开，正在重连...');
+        showToast(t.connectionDisconnected);
         // 延迟重试
         setTimeout(() => {
           if (ws.isConnected()) {
@@ -624,7 +644,7 @@ const App: React.FC = () => {
             setIsTransferModalOpen(false);
             setSelectedPlayer(null);
           } else {
-            showToast('连接失败，请稍后重试');
+            showToast(t.connectionFailedRetry);
           }
         }, 2000);
       }
@@ -651,7 +671,7 @@ const App: React.FC = () => {
   const handleEndGameConfirm = () => {
     const ws = wsClientRef.current;
     if (!ws) {
-      showToast('连接未就绪，请稍候');
+      showToast(t.connectionNotReady);
       return;
     }
 
@@ -659,7 +679,7 @@ const App: React.FC = () => {
     forceRefreshRoomData();
 
     if (!ws.isConnected()) {
-      showToast('连接断开，正在重连...');
+      showToast(t.connectionDisconnected);
       // 延迟重试
       setTimeout(() => {
         if (ws.isConnected()) {
@@ -673,7 +693,7 @@ const App: React.FC = () => {
             playerId: selfId,
           });
         } else {
-          showToast('连接失败，请稍后重试');
+          showToast(t.connectionFailedRetry);
         }
       }, 2000);
       return;
@@ -712,7 +732,7 @@ const App: React.FC = () => {
   const handleLeaveRoomConfirm = () => {
     const ws = wsClientRef.current;
     if (!ws || !ws.isConnected()) {
-      showToast('连接未就绪，请稍候');
+      showToast(t.connectionNotReady);
       return;
     }
 
