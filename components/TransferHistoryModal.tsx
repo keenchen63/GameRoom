@@ -1,11 +1,12 @@
 import React from 'react';
-import { TransferRecord, Lang } from '../types';
+import { TransferRecord, Lang, RoomData } from '../types';
 import { X } from 'lucide-react';
 
 interface TransferHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   transferHistory: TransferRecord[];
+  room: RoomData | null; // 添加 room 参数，用于查找玩家 avatar
   lang: Lang;
 }
 
@@ -13,6 +14,7 @@ export const TransferHistoryModal: React.FC<TransferHistoryModalProps> = ({
   isOpen,
   onClose,
   transferHistory,
+  room,
   lang,
 }) => {
   if (!isOpen) return null;
@@ -23,6 +25,30 @@ export const TransferHistoryModal: React.FC<TransferHistoryModalProps> = ({
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
+  };
+
+  // 根据 playerId 获取玩家名称（优先从 room.players 中查找，否则使用历史记录中的名称）
+  const getPlayerName = (playerId: string, fallbackName: string, fallbackEmoji: string) => {
+    if (room) {
+      const player = room.players.find(p => p.id === playerId);
+      if (player) {
+        return lang === Lang.CN ? player.animalProfile.name_cn : player.animalProfile.name_en;
+      }
+    }
+    // 如果找不到玩家（可能已离开），使用历史记录中的名称
+    return fallbackName;
+  };
+
+  // 根据 playerId 获取玩家 emoji（优先从 room.players 中查找，否则使用历史记录中的 emoji）
+  const getPlayerEmoji = (playerId: string, fallbackEmoji: string) => {
+    if (room) {
+      const player = room.players.find(p => p.id === playerId);
+      if (player) {
+        return player.animalProfile.emoji;
+      }
+    }
+    // 如果找不到玩家（可能已离开），使用历史记录中的 emoji
+    return fallbackEmoji;
   };
 
   return (
@@ -59,16 +85,16 @@ export const TransferHistoryModal: React.FC<TransferHistoryModalProps> = ({
                   style={{ backgroundColor: '#EEF4FA', borderColor: '#DCE8F5' }}
                 >
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="text-2xl">{record.fromPlayerEmoji}</span>
+                    <span className="text-2xl">{getPlayerEmoji(record.fromPlayerId, record.fromPlayerEmoji)}</span>
                     <span className="font-semibold text-slate-800">
-                      {record.fromPlayerName}
+                      {getPlayerName(record.fromPlayerId, record.fromPlayerName, record.fromPlayerEmoji)}
                     </span>
                     <span style={{ color: '#5B6E80' }}>
                       {lang === Lang.CN ? '向' : '→'}
                     </span>
-                    <span className="text-2xl">{record.toPlayerEmoji}</span>
+                    <span className="text-2xl">{getPlayerEmoji(record.toPlayerId, record.toPlayerEmoji)}</span>
                     <span className="font-semibold text-slate-800">
-                      {record.toPlayerName}
+                      {getPlayerName(record.toPlayerId, record.toPlayerName, record.toPlayerEmoji)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

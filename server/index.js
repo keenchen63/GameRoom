@@ -453,9 +453,8 @@ function handleTransfer(ws, playerId, targetPlayerId, amount) {
   ws.send(JSON.stringify({ 
     type: 'TRANSFER_SUCCESS', 
     data: {
-      fromPlayerName: fromPlayer.avatar.name_cn,
-      toPlayerName: toPlayer.avatar.name_cn,
-      toPlayerEmoji: toPlayer.avatar.emoji,
+      fromPlayerAvatar: fromPlayer.avatar, // 返回完整的 avatar 对象
+      toPlayerAvatar: toPlayer.avatar, // 返回完整的 avatar 对象
       amount: amount,
     }
   }));

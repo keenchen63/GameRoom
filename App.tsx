@@ -13,7 +13,11 @@ import { WebSocketClient } from './utils/websocket';
 
 const App: React.FC = () => {
   // --- State ---
-  const [lang, setLang] = useState<Lang>(Lang.CN);
+  // 从 localStorage 读取语言设置，如果没有则默认为中文
+  const [lang, setLang] = useState<Lang>(() => {
+    const savedLang = localStorage.getItem('lang');
+    return savedLang === 'EN' ? Lang.EN : Lang.CN;
+  });
   const [view, setView] = useState<ViewState>(ViewState.HOME);
   const [room, setRoom] = useState<RoomData | null>(null);
   const [selfId, setSelfId] = useState<string>('');
@@ -40,7 +44,16 @@ const App: React.FC = () => {
   const isManualJoinRef = useRef<boolean>(false);
   const roomRef = useRef<RoomData | null>(null);
   const isRefreshingRef = useRef<boolean>(false);
+  // 初始化 langRef，使用当前的 lang 值（已经从 localStorage 读取）
+  const langRef = useRef<Lang>(lang);
   const t = TEXT[lang];
+
+  // 同步 lang 到 ref，以便在事件处理函数中访问最新值
+  useEffect(() => {
+    langRef.current = lang;
+    // 保存语言设置到 localStorage（确保每次变化都保存）
+    localStorage.setItem('lang', lang);
+  }, [lang]);
   
   // 同步 room 到 ref，以便在事件处理函数中访问最新值
   useEffect(() => {
@@ -106,6 +119,13 @@ const App: React.FC = () => {
 
   // 翻译服务器返回的错误消息
   const translateErrorMessage = (errorMsg: string): string => {
+    if (!errorMsg) return errorMsg;
+    
+    const currentLang = langRef.current; // 使用 ref 获取最新的 lang 值
+    
+    // 去除可能的空格和换行符
+    const trimmedMsg = errorMsg.trim();
+    
     const errorMap: Record<string, { cn: string; en: string }> = {
       '房间不存在': { cn: '房间不存在', en: 'Room not found' },
       '房间已结束': { cn: '房间已结束', en: 'Room ended' },
@@ -116,15 +136,23 @@ const App: React.FC = () => {
       '只有房主可以结束房间': { cn: '只有房主可以结束房间', en: 'Only host can end room' },
     };
 
-    const mapped = errorMap[errorMsg];
+    const mapped = errorMap[trimmedMsg];
     if (mapped) {
-      return lang === Lang.CN ? mapped.cn : mapped.en;
+      const result = currentLang === Lang.CN ? mapped.cn : mapped.en;
+      return result;
     }
-    return errorMsg; // 如果找不到映射，返回原消息
+    
+    // 如果找不到映射，返回原消息
+    return trimmedMsg;
   };
 
   const toggleLang = () => {
-    setLang(prev => prev === Lang.CN ? Lang.EN : Lang.CN);
+    setLang(prev => {
+      const newLang = prev === Lang.CN ? Lang.EN : Lang.CN;
+      // 保存语言设置到 localStorage
+      localStorage.setItem('lang', newLang);
+      return newLang;
+    });
   };
 
   // 手动刷新数据
@@ -138,7 +166,8 @@ const App: React.FC = () => {
     if (!success) {
       isRefreshingRef.current = false;
       setIsRefreshing(false);
-      showToast(lang === Lang.CN ? '刷新失败，请稍后重试' : 'Refresh failed, please try again');
+      const currentLang = langRef.current;
+      showToast(currentLang === Lang.CN ? '刷新失败，请稍后重试' : 'Refresh failed, please try again');
       return;
     }
     
@@ -247,6 +276,34 @@ const App: React.FC = () => {
       setSelfId(savedPlayerId);
     }
     
+    // 在 useEffect 内部定义翻译函数，确保能访问最新的 langRef
+    // 注意：这个函数每次调用时都会读取最新的 langRef.current
+    const translateError = (errorMsg: string): string => {
+      if (!errorMsg) return errorMsg;
+      
+      // 每次调用时都读取最新的 langRef.current，确保使用最新的语言设置
+      const currentLang = langRef.current;
+      const trimmedMsg = errorMsg.trim();
+      
+      const errorMap: Record<string, { cn: string; en: string }> = {
+        '房间不存在': { cn: '房间不存在', en: 'Room not found' },
+        '房间已结束': { cn: '房间已结束', en: 'Room ended' },
+        '你不在任何房间中': { cn: '你不在任何房间中', en: 'You are not in any room' },
+        '玩家不存在': { cn: '玩家不存在', en: 'Player not found' },
+        '不能给自己转分': { cn: '不能给自己转分', en: 'Cannot transfer points to yourself' },
+        '积分为0才能离开房间': { cn: '积分为0才能离开房间', en: 'Score must be 0 to leave room' },
+        '只有房主可以结束房间': { cn: '只有房主可以结束房间', en: 'Only host can end room' },
+      };
+
+      const mapped = errorMap[trimmedMsg];
+      if (mapped) {
+        const result = currentLang === Lang.CN ? mapped.cn : mapped.en;
+        return result;
+      }
+      
+      return trimmedMsg;
+    };
+    
     const ws = new WebSocketClient();
     wsClientRef.current = ws;
 
@@ -289,13 +346,14 @@ const App: React.FC = () => {
     ws.on('TRANSFER_SUCCESS', (data: any) => {
       if (isMounted) {
         // WebSocket 客户端已经传递了 response.data，所以这里直接使用 data
-        const { fromPlayerName, toPlayerName, toPlayerEmoji, amount } = data || {};
-        if (fromPlayerName && toPlayerName && amount !== undefined) {
-          // 使用当前的 lang state
-          const currentLang = lang;
+        const { fromPlayerAvatar, toPlayerAvatar, amount } = data || {};
+        if (fromPlayerAvatar && toPlayerAvatar && amount !== undefined) {
+          // 使用当前的 lang state 和 langRef
+          const currentLang = langRef.current;
+          const toPlayerName = currentLang === Lang.CN ? toPlayerAvatar.name_cn : toPlayerAvatar.name_en;
           const message = currentLang === Lang.CN 
-            ? `已向 ${toPlayerEmoji} ${toPlayerName} 转 ${amount} 分`
-            : `Transferred ${amount} points to ${toPlayerEmoji} ${toPlayerName}`;
+            ? `已向 ${toPlayerAvatar.emoji} ${toPlayerName} 转 ${amount} 分`
+            : `Transferred ${amount} points to ${toPlayerAvatar.emoji} ${toPlayerName}`;
           showToast(message);
         }
       }
@@ -320,9 +378,12 @@ const App: React.FC = () => {
 
     ws.on('ERROR', (data) => {
       if (isMounted) {
-        const errorMessage = data?.message || (lang === Lang.CN ? '发生错误' : 'An error occurred');
+        const currentLang = langRef.current;
+        const errorMessage = data?.message || (currentLang === Lang.CN ? '发生错误' : 'An error occurred');
         const isManualJoin = isManualJoinRef.current;
-        const translatedError = translateErrorMessage(errorMessage);
+        
+        // 翻译错误消息（使用 useEffect 内部定义的函数）
+        const translatedError = translateError(errorMessage);
         
         // 如果是自动 rejoin 失败，静默处理，不显示错误提示
         if (autoRejoinAttempted && !isManualJoin && (errorMessage === '房间不存在' || errorMessage === '房间已结束')) {
@@ -336,6 +397,7 @@ const App: React.FC = () => {
         }
         
         // 显示错误提示（包括房间不存在和其他所有错误）
+        // 确保使用翻译后的错误消息
         showToast(translatedError);
         
         // 如果房间不存在或已结束，清除 localStorage 中的房间信息
@@ -685,7 +747,8 @@ const App: React.FC = () => {
         if (ws.isConnected()) {
           const currentPlayer = roomRef.current?.players.find(p => p.id === selfId);
           if (!currentPlayer?.isHost) {
-            showToast(lang === Lang.CN ? '只有房主可以结束房间' : 'Only host can end room');
+            const currentLang = langRef.current;
+            showToast(currentLang === Lang.CN ? '只有房主可以结束房间' : 'Only host can end room');
             return;
           }
           ws.send({
@@ -702,7 +765,8 @@ const App: React.FC = () => {
     // 检查是否是房主
     const currentPlayer = room?.players.find(p => p.id === selfId);
     if (!currentPlayer?.isHost) {
-      showToast(lang === Lang.CN ? '只有房主可以结束房间' : 'Only host can end room');
+      const currentLang = langRef.current;
+      showToast(currentLang === Lang.CN ? '只有房主可以结束房间' : 'Only host can end room');
       return;
     }
 
@@ -720,7 +784,8 @@ const App: React.FC = () => {
     
     // 检查积分是否为0
     if (currentPlayer.score !== 0) {
-      const errorMsg = lang === Lang.CN ? '积分为0才能离开房间' : 'Score must be 0 to leave room';
+      const currentLang = langRef.current;
+      const errorMsg = currentLang === Lang.CN ? '积分为0才能离开房间' : 'Score must be 0 to leave room';
       showToast(errorMsg);
       return;
     }
@@ -971,6 +1036,7 @@ const App: React.FC = () => {
           isOpen={isTransferHistoryModalOpen}
           onClose={() => setIsTransferHistoryModalOpen(false)}
           transferHistory={transferHistory}
+          room={room}
           lang={lang}
         />
 
